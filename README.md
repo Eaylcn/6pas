@@ -14,3 +14,7 @@
 ## Planlanan Stack
 
 Vite · React 18 · TypeScript · Zustand · Tailwind CSS (frontend-only MVP, mock service layer + localStorage)
+
+## Görsel Kimlik
+
+**Retro futbol gazetesi** teması: gazete kağıdı kremi zemin, mürekkep koyusu metin, çim yeşili + vintage kırmızı vurgular, manşet tipografisi, altın folyo İKON kartlar. UI dili Türkçe (i18n altyapılı).

@@ -89,6 +89,7 @@ MVP'de **yapılacaklar**:
 | Navigasyon | Ekran state-machine (store içinde `currentScreen`) | Oyun akışı korumalı geçişler gerektirir; ileride URL router'a taşınabilir |
 | Kalıcılık | `localStorage` üstünde **async service layer** | Bugün mock, yarın gerçek backend — servis imzaları değişmeden |
 | RNG | Seed'lenebilir PRNG (`utils/random.ts`) | Tekrarlanabilir maçlar → debug ve denge testi |
+| i18n | Sözlük tabanlı `t()` katmanı (UI) + locale-keyed anlatım şablon bankası | MVP Türkçe; İngilizce eklemek yalnızca yeni sözlük/şablon dosyası demek |
 | Test | Vitest (engine katmanı) + toplu simülasyon scripti | Skor dağılımı 1000 maçlık simülasyonla doğrulanır |
 
 **Mimari ilkeler (spesifikasyondan):**
@@ -313,6 +314,7 @@ GoalkeeperScore = kaleci statı + perk bonusu + kaptan bonusu + kimya modifier +
 - **Perk yedirme örneği:** Bilek Kıran tetiklendiğinde → *"Dar alanda savunmacıyı üstüne çekti, bileğini son anda çevirip önünü boşalttı."*
 - **Tekrar koruması:** aynı şablon aynı maçta tekrar kullanılmaz; her event tipi için ≥6 varyant yazılır.
 - Şablonlar slot'ludur: `{oyuncu}`, `{takım}`, `{dakika}`, `{skor}`. Ton: doğal Türkçe futbol yayını.
+- Şablon bankası **locale-keyed** tutulur (`tr` MVP'de tek locale); ileride İngilizce anlatım, motor koduna dokunmadan yeni şablon dosyasıyla eklenir.
 - Akrobatik anlar (rövaşata, rabona) yalnızca ilgili perk + yüksek zar kombinasyonunda, maç başına 0-2 kez → nadir ve özel hissettirir.
 
 ## 18. Maç Simülasyon Sistemi
@@ -421,6 +423,7 @@ src/
 │  └─ weatherEngine.ts     # MVP'de nötr iskelet
 ├─ store/                  # useGameStore.ts, useUserStore.ts
 ├─ services/               # authService, runService, matchmakingService, leaderboardService
+├─ i18n/                   # sözlükler (tr.ts) + t() yardımcı katmanı
 ├─ types/                  # index.ts (tüm modeller)
 └─ utils/                  # random.ts (seedli), weightedRandom.ts, formatters.ts
 ```
@@ -463,13 +466,33 @@ Her faz sonunda çalışan bir dikey dilim olur; faz 3'ün motoru UI'dan bağım
 
 ---
 
-## 28. Görsel Tasarım Yönü (birlikte kararlaştırılacak)
+## 28. Görsel Tasarım Kararları (kararlaştırıldı)
 
-Kod öncesi netleşecek başlıklar:
+### Tema: Retro Futbol Gazetesi 🗞️
 
-1. **Tema/atmosfer:** Gece maçı-neon halısaha (koyu) · retro futbol gazetesi · modern aydınlık spor uygulaması · e-spor arena
-2. **Tipografi:** Skorboard/condensed spor tipografisi mi, modern geometrik mi?
-3. **Maç akışı kontrolü:** Otomatik yayın akışı mı, "Sonraki" butonu mu, hibrit mi?
-4. Rarity renk skalası, kart tasarımı ve Icon glow dili seçilen temaya göre belirlenecek.
+Oyun, eski bir spor gazetesinin sayfaları gibi hissettirir — text-based anlatım kimliğiyle birebir örtüşür.
 
-UI dili: **Türkçe** (spesifikasyon gereği; rarity adları dahil).
+- **Palet:** gazete kağıdı kremi zemin (`#F4EDDE` bandı), mürekkep koyusu metin (`#211C16` bandı), çim yeşili birincil vurgu, vintage kırmızı-turuncu ikincil vurgu (GOL manşetleri, kritik anlar), hardal/altın rozet tonu.
+- **Doku ve detay:** ince kağıt dokusu, çift çizgili gazete cetvelleri, manşet blokları, "spot ilan" çerçeveli kartlar. Skorboard eski tip mekanik pano estetiği.
+- **Maç anlatımı:** canlı maç sayfası "muhabir bildiriyor" sütunu gibi akar; GOOOL satırları manşet puntosuyla basılır.
+- **Rarity dili (neon glow yerine mürekkep/folyo):** Common gri mürekkep · Solid bronz · Pro mavi mürekkep · Star bordo · Legend altın çerçeve · **Icon: altın folyo + çift çerçeve + "İKON" manşet rozeti** — parlaklık, kâğıt üstünde varak baskı hissiyle verilir.
+- Koyu tema MVP'de yok; "gece baskısı" varyantı ileride eklenebilir.
+
+### Tipografi: Karışım
+
+- **Manşet/başlıklar:** serif display (gazete manşeti karakteri).
+- **Skor, dakika, istatistik:** condensed/tabular rakamlar (mekanik skorboard hissi).
+- **Anlatım metni ve UI gövdesi:** okunaklı modern sans-serif (uzun anlatım metinlerinde konfor öncelikli).
+- Fontlar self-host edilir (harici CDN bağımlılığı yok).
+
+### Maç akışı: Hibrit (online-uyumlu)
+
+Satırlar otomatik akar (yayın hissi), hız seçici (1x/2x) + duraklat vardır; şut anlarında akış otomatik yavaşlayıp gerilim kurar.
+
+**Online'da hız kontrolü sorun olmaz, çünkü:** maç bir auto-battler — sonuç ve tüm event timeline'ı maç başında (ve devre arası müdahalelerinden sonra 2. yarı için) motor tarafından **önceden üretilir**. Ekranda gördüğün akış, bitmiş bir kaydın "yayın tekrarı"dır; hız/duraklat tamamen sunum katmanıdır, sonucu etkilemez. Bu yüzden gerçek PvP geldiğinde bile her oyuncu aynı maçı kendi hızında izleyebilir. Tek senkron noktası devre arasıdır: iki taraf da kararını verince (veya ör. 30 sn'lik süre dolunca) 2. yarı üretilir — "iki takım da soyunma odasında" bekleme ekranı. MVP'de rakip bot olduğu için bu bekleme zaten yoktur.
+
+### Dil: Türkçe + i18n altyapısı
+
+- Tüm UI metinleri baştan sözlük dosyalarında (`i18n/tr.ts`), bileşenler `t()` üzerinden okur.
+- Anlatım şablon bankası locale-keyed; MVP'de yalnızca `tr` doldurulur.
+- Rarity adları dahil UI dili Türkçe (Sıradan → İkon).
