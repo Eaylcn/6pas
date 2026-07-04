@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Retro Futbol Gazetesi teması ---- */
+
+body {
+  @apply bg-paper text-ink font-body;
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(33, 28, 22, 0.04), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(33, 28, 22, 0.05), transparent 50%),
+    repeating-linear-gradient(0deg, rgba(33, 28, 22, 0.015) 0 1px, transparent 1px 3px);
+  min-height: 100vh;
+}
+
+/* Gazete cetvelleri */
+.rule-double {
+  border-top: 3px double #211c16;
+  border-bottom: 3px double #211c16;
+}
+
+.rule-top {
+  border-top: 1px solid rgba(33, 28, 22, 0.55);
+}
+
+.headline {
+  @apply font-headline font-bold uppercase tracking-wide;
+}
+
+.masthead-title {
+  @apply font-headline font-black uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Skorboard — mekanik pano hissi */
+.scoreboard-digit {
+  @apply font-score font-bold bg-ink text-paper px-2 py-0.5 rounded-sm inline-block;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 -2px 0 rgba(244, 237, 222, 0.15);
+}
+
+/* Kart çerçeveleri */
+.news-card {
+  @apply bg-paper-soft border border-ink/60 shadow-card;
+}
+
+.news-card-clickable {
+  @apply news-card cursor-pointer transition-transform duration-100;
+}
+.news-card-clickable:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(33, 28, 22, 0.25);
+}
+
+/* İkon kart: altın varak baskı hissi */
+.icon-foil {
+  border: 2px solid #d4af37;
+  background:
+    linear-gradient(135deg, rgba(212, 175, 55, 0.12), transparent 40%, rgba(212, 175, 55, 0.1)),
+    #f2e8ce;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.7),
+    2px 2px 0 rgba(33, 28, 22, 0.2),
+    0 0 16px rgba(212, 175, 55, 0.35);
+}
+
+/* Rarity sol şerit renkleri PlayerCard içinde inline uygulanır */
+
+/* Maç sütunu satır animasyonu */
+@keyframes lineIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.line-in {
+  animation: lineIn 0.35s ease-out both;
+}
+
+.goal-headline {
+  @apply font-headline font-black text-vermil uppercase;
+  text-shadow: 1px 1px 0 rgba(33, 28, 22, 0.15);
+}
+
+/* Buton dili: gazete ilanı düğmesi */
+.btn-press {
+  @apply inline-block border-2 border-ink bg-ink text-paper font-headline font-bold uppercase tracking-wider px-5 py-2.5 transition-all duration-100 select-none;
+}
+.btn-press:hover:not(:disabled) {
+  @apply bg-grass-deep border-grass-deep;
+}
+.btn-press:disabled {
+  @apply opacity-40 cursor-not-allowed;
+}
+
+.btn-outline {
+  @apply inline-block border-2 border-ink bg-transparent text-ink font-headline font-bold uppercase tracking-wider px-5 py-2.5 transition-all duration-100 select-none;
+}
+.btn-outline:hover:not(:disabled) {
+  @apply bg-ink text-paper;
+}
+.btn-outline:disabled {
+  @apply opacity-40 cursor-not-allowed;
+}
+
+.field-input {
+  @apply w-full border-2 border-ink bg-paper-soft px-4 py-3 font-body text-lg text-ink placeholder-ink-faint focus:outline-none focus:bg-paper;
+}
+
+/* Küçük gazete etiketi */
+.tag-label {
+  @apply inline-block font-score uppercase tracking-widest text-[10px] px-1.5 py-0.5 border border-ink/70;
+}

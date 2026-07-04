@@ -1,0 +1,110 @@
+// El küratörlü İkon oyuncular — gerçek isim yok, esin kaynağı hissedilir.
+// inspiredBy alanı UI'da ASLA gösterilmez.
+import type { FieldPlayer, Goalkeeper } from '../types';
+
+function icon(
+  id: string,
+  name: string,
+  position: 'ATK' | 'MID' | 'DEF',
+  ovr: number,
+  stats: [number, number, number],
+  nationality: string,
+  club: string,
+  league: string,
+  perks: string[],
+  flavorText: string,
+  captainTrait: string,
+  inspiredBy: string,
+): FieldPlayer {
+  return {
+    id,
+    name,
+    position,
+    rarity: 'icon',
+    ovr,
+    atk: stats[0],
+    mid: stats[1],
+    def: stats[2],
+    nationality,
+    league,
+    club,
+    perks,
+    isIcon: true,
+    flavorText,
+    captainTrait,
+    inspiredBy,
+  };
+}
+
+export const iconFieldPlayers: FieldPlayer[] = [
+  icon('ic-messan', 'Lio Messan', 'ATK', 96, [96, 93, 48], 'Arjantin', 'par-etoile', 'fsl', ['bilek-kiran', 'kaleciyle-dans', 'dar-aci-ustasi', 'ilk-temas'], 'Top ayağındayken zaman yavaşlar.', 'Büyük anlarda sorumluluk alır.', 'Lionel Messi'),
+  icon('ic-rovaldo', 'Cristian Rovaldo', 'ATK', 95, [96, 84, 50], 'Portekiz', 'mad-crown', 'icl', ['hava-fisegi', 'olu-kose', 'son-vurus', 'acimasiz-plase'], 'Skor tabelasıyla kişisel meselesi var.', 'Takımın hücum ritmini yukarı çeker.', 'Cristiano Ronaldo'),
+  icon('ic-mbari', 'Kyl Mbari', 'ATK', 94, [95, 85, 46], 'Fransa', 'par-etoile', 'fsl', ['savunma-arkasi', 'tek-dokunus', 'ilk-temas'], 'Çim onun için pist, top yol arkadaşı.', 'Hızıyla takıma cesaret verir.', 'Kylian Mbappé'),
+  icon('ic-haalandar', 'Erhan Haalandar', 'ATK', 94, [96, 74, 52], 'Norveç', 'man-forge', 'eml', ['acimasiz-plase', 'kor-nokta-kosusu', 'cift-vurus-sezgisi'], 'Ceza sahasında bir makine soğukluğu.', 'Golleriyle takımı sırtlar.', 'Erling Haaland'),
+  icon('ic-neyro', 'Neyro Santos', 'ATK', 93, [93, 90, 44], 'Brezilya', 'par-etoile', 'fsl', ['rabona-imzasi', 'bilek-kiran', 'kaleciyle-dans'], 'Sahaya çıkma sebebi eğlenmek.', 'Cesaretiyle takıma ilham verir.', 'Neymar'),
+  icon('ic-maradova', 'Diego Maradova', 'ATK', 96, [95, 94, 42], 'Arjantin', 'tor-nero', 'ied', ['bilek-kiran', 'dar-aci-ustasi', 'kaleciyle-dans', 'son-vurus'], 'Sol ayağında bir mahallenin umudu.', 'Büyük anlarda sorumluluk alır.', 'Diego Maradona'),
+  icon('ic-peleiro', 'Peleiro', 'ATK', 96, [96, 90, 55], 'Brezilya', 'lis-azul', 'pcl', ['rovasata-tehdidi', 'hava-fisegi', 'acimasiz-plase', 'cift-vurus-sezgisi'], 'Oyunun kendisi ondan öğrenildi.', 'Golleriyle takımı sırtlar.', 'Pelé'),
+  icon('ic-cruyven', 'Johan Cruyven', 'ATK', 95, [92, 95, 58], 'Hollanda', 'ams-noord', 'dnl', ['ters-top', 'tek-dokunus', 'onsezi-pasi'], 'Futbolu satranç gibi oynar.', 'Oyunun temposunu tek başına belirler.', 'Johan Cruyff'),
+  icon('ic-dinho', 'Dinho Gaucho', 'ATK', 93, [91, 93, 40], 'Brezilya', 'sev-roja', 'icl', ['rabona-imzasi', 'bilek-kiran', 'igne-deligi'], 'Gülümseyerek çalım atar.', 'Neşesiyle soyunma odasını ısıtır.', 'Ronaldinho'),
+  icon('ic-lewanovski', 'Robert Lewanovski', 'ATK', 92, [94, 78, 50], 'Polonya', 'mun-adler', 'gpl', ['acimasiz-plase', 'cift-vurus-sezgisi', 'kor-nokta-kosusu'], 'Ceza sahasında yanlış karar vermez.', 'Golleriyle takımı sırtlar.', 'Robert Lewandowski'),
+  icon('ic-saladin', 'Mo Saladin', 'ATK', 92, [93, 84, 48], 'Mısır', 'liv-docks', 'eml', ['dar-aci-ustasi', 'savunma-arkasi', 'tek-dokunus'], 'Sağ kanattan içeri kat edip aynı köşeyi bulur.', 'Çalışkanlığıyla örnek olur.', 'Mohamed Salah'),
+  icon('ic-benzari', 'Karim Benzari', 'ATK', 91, [92, 86, 47], 'Fransa', 'mad-crown', 'icl', ['tek-dokunus', 'kaleciyle-dans', 'ilk-temas'], 'Sessizce maç çözer.', 'Zarafetiyle oyunu sakinleştirir.', 'Karim Benzema'),
+  icon('ic-suarezo', 'Luis Suarezo', 'ATK', 91, [93, 80, 51], 'Uruguay', 'sev-roja', 'icl', ['acimasiz-plase', 'kor-nokta-kosusu', 'son-vurus'], 'Savunmayla psikolojik savaşı hiç bırakmaz.', 'Mücadelesiyle takımı ateşler.', 'Luis Suárez'),
+  icon('ic-kayn', 'Harry Kayn', 'ATK', 91, [93, 84, 49], 'İngiltere', 'mun-adler', 'gpl', ['olu-kose', 'acimasiz-plase', 'onsezi-pasi'], 'Hem golü atar hem attırır.', 'Büyük anlarda sorumluluk alır.', 'Harry Kane'),
+  icon('ic-zidani', 'Zizo Zidani', 'MID', 95, [88, 96, 62], 'Fransa', 'mad-crown', 'icl', ['ucuncu-goz', 'dar-alan-ustasi', 'baskidan-cikis', 'tempo-hirsizi'], 'Topla arasında görünmez bir ip var.', 'Zarafetiyle oyunu sakinleştirir.', 'Zinedine Zidane'),
+  icon('ic-modricci', 'Luka Modricci', 'MID', 92, [80, 94, 68], 'Hırvatistan', 'mad-crown', 'icl', ['pas-muhendisi', 'oyunun-nabzi', 'baskidan-cikis'], 'Yaş sadece bir sayı, pas sonsuz.', 'Oyunun temposunu tek başına belirler.', 'Luka Modrić'),
+  icon('ic-debruyneer', 'Kevin De Bruyneer', 'MID', 93, [86, 95, 60], 'Belçika', 'man-forge', 'eml', ['igne-deligi', 'onsezi-pasi', 'kilit-pas', 'ara-koridor'], 'Pasları şehir planı gibi çizilmiş.', 'Takımı pasla konuşturur.', 'Kevin De Bruyne'),
+  icon('ic-iniestro', 'Andres Iniestro', 'MID', 93, [84, 95, 58], 'İspanya', 'sev-roja', 'icl', ['dar-alan-ustasi', 'baskidan-cikis', 'sessiz-orkestra'], 'Kalabalığın içinden sessizce süzülür.', 'Sakinliğiyle yön gösterir.', 'Andrés Iniesta'),
+  icon('ic-hernan', 'Xavi Hernan', 'MID', 92, [78, 95, 60], 'İspanya', 'sev-roja', 'icl', ['pas-muhendisi', 'saha-akli', 'sessiz-orkestra'], 'Oyunu iki dokunuşta yönetir.', 'Takımı pasla konuşturur.', 'Xavi Hernández'),
+  icon('ic-bellinger', 'Jude Bellinger', 'MID', 91, [86, 92, 74], 'İngiltere', 'mad-crown', 'icl', ['ikinci-top-avcisi', 'oyunun-nabzi', 'kilit-pas'], 'Yaşından beklenmeyen bir olgunluk.', 'Enerjisiyle takımı taşır.', 'Jude Bellingham'),
+  icon('ic-guleran', 'Arta Güleran', 'MID', 91, [88, 93, 55], 'Türkiye', 'mad-crown', 'icl', ['igne-deligi', 'ters-top', 'dar-alan-ustasi'], 'Sol ayağı İstanbul aksanıyla konuşur.', 'Cesaretiyle takıma ilham verir.', 'Arda Güler'),
+  icon('ic-calhan', 'Hakan Çalhan', 'MID', 90, [84, 92, 66], 'Türkiye', 'mil-vesta', 'ied', ['ara-koridor', 'pas-muhendisi', 'oyunun-nabzi'], 'Duran toplar onun imza alanı.', 'Oyunun temposunu tek başına belirler.', 'Hakan Çalhanoğlu'),
+  icon('ic-moratti', 'Emre Moratti', 'MID', 90, [80, 91, 70], 'Türkiye', 'ist-falcons', 'tpc', ['saha-akli', 'tempo-hirsizi', 'kilit-pas'], 'Sahada bir ağabey, oyunda bir usta.', 'Tecrübesiyle yol gösterir.', 'Emre Belözoğlu'),
+  icon('ic-kahveciro', 'İrfan Kahveciro', 'MID', 90, [85, 91, 58], 'Türkiye', 'ist-falcons', 'tpc', ['ara-koridor', 'ikinci-top-avcisi', 'onsezi-pasi'], 'Uzaktan çektiği her şut tribünü ayağa kaldırır.', 'Büyük anlarda sorumluluk alır.', 'İrfan Can Kahveci'),
+  icon('ic-kadirov', 'Ferdi Kadırov', 'DEF', 90, [62, 80, 92], 'Türkiye', 'ist-falcons', 'tpc', ['zamaninda-kayis', 'ters-kademe', 'omuz-omuza'], 'Sol kanadın kilidi ve anahtarı.', 'Savunma hattını toparlar.', 'Ferdi Kadıoğlu'),
+  icon('ic-akturko', 'Kerem Aktürko', 'ATK', 90, [91, 85, 45], 'Türkiye', 'ist-falcons', 'tpc', ['bilek-kiran', 'dar-aci-ustasi', 'ilk-temas'], 'Kanattan içeri her kat edişi tehlike.', 'Cesaretiyle takıma ilham verir.', 'Kerem Aktürkoğlu'),
+  icon('ic-tosuni', 'Cenk Tosuni', 'ATK', 90, [91, 74, 55], 'Türkiye', 'ank-meridian', 'tpc', ['hava-fisegi', 'son-vurus', 'cift-vurus-sezgisi'], 'Ceza sahasında inatçı bir boğa.', 'Mücadelesiyle takımı ateşler.', 'Cenk Tosun'),
+  icon('ic-maldino', 'Paolo Maldino', 'DEF', 95, [55, 78, 96], 'İtalya', 'mil-vesta', 'ied', ['son-perde', 'sessiz-mudahale', 'zamaninda-kayis', 'son-adam'], 'Müdahale etmek zorunda kalıyorsa çoktan hata yapılmıştır.', 'Savunma hattını toparlar.', 'Paolo Maldini'),
+  icon('ic-ramoz', 'Sergio Ramoz', 'DEF', 93, [70, 76, 94], 'İspanya', 'mad-crown', 'icl', ['govde-koydu', 'hava-kilidi', 'duvar-etkisi', 'omuz-omuza'], 'Son dakikalarda rakip ceza sahasında biter.', 'Zor anlarda takıma sakinlik aşılar.', 'Sergio Ramos'),
+  icon('ic-vandijken', 'Virgil van Dijken', 'DEF', 94, [60, 80, 96], 'Hollanda', 'liv-docks', 'eml', ['hava-kilidi', 'son-adam', 'alan-kilidi', 'temas-ustasi'], 'Yanından koşarak geçilmez.', 'Savunma hattını toparlar.', 'Virgil van Dijk'),
+  icon('ic-beckenbauner', 'Franz Beckenbauner', 'DEF', 95, [68, 90, 95], 'Almanya', 'mun-adler', 'gpl', ['risk-temizligi', 'ters-kademe', 'baskidan-cikis', 'saha-akli'], 'Savunmayı bir orkestra şefi gibi yönetir.', 'Tecrübesiyle yol gösterir.', 'Franz Beckenbauer'),
+];
+
+function iconGk(
+  id: string,
+  name: string,
+  ovr: number,
+  stats: [number, number, number],
+  nationality: string,
+  club: string,
+  league: string,
+  perks: string[],
+  flavorText: string,
+  captainTrait: string,
+  inspiredBy: string,
+): Goalkeeper {
+  return {
+    id,
+    name,
+    position: 'GK',
+    rarity: 'icon',
+    ovr,
+    ref: stats[0],
+    command: stats[1],
+    distribution: stats[2],
+    nationality,
+    league,
+    club,
+    perks,
+    isIcon: true,
+    flavorText,
+    captainTrait,
+    inspiredBy,
+  };
+}
+
+export const iconGoalkeepers: Goalkeeper[] = [
+  iconGk('ic-buffoni', 'Gigi Buffoni', 94, [95, 92, 82], 'İtalya', 'tor-nero', 'ied', ['son-nefes-refleksi', 'panik-yok', 'karsi-karsiya-sogugu', 'kale-muhru'], 'Kalede geçen bir ömür, hâlâ aynı tutku.', 'Ceza sahasında son sözü söyler.', 'Gianluigi Buffon'),
+  iconGk('ic-casillaso', 'Iker Casillaso', 93, [96, 86, 80], 'İspanya', 'mad-crown', 'icl', ['ucan-eldiven', 'tek-el-mucizesi', 'ilk-hamle'], 'Refleksleri fizik kurallarını esnetir.', 'Arkadan oyunu okur ve yönetir.', 'Iker Casillas'),
+  iconGk('ic-yasharin', 'Lev Yasharin', 95, [95, 94, 78], 'Rusya', 'ank-meridian', 'tpc', ['aci-katili', 'cizgi-buyucusu', 'panik-yok', 'hava-sahasi'], 'Siyah örümcek; kalenin efsanevi gölgesi.', 'Ceza sahasında son sözü söyler.', 'Lev Yashin'),
+];

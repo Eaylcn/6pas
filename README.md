@@ -9,11 +9,20 @@
 
 ## Durum
 
-🚧 Planlama aşaması — detaylı MVP geliştirme planı için: [`docs/GELISTIRME_PLANI.md`](docs/GELISTIRME_PLANI.md)
+✅ MVP tamamlandı — detaylı geliştirme planı için: [`docs/GELISTIRME_PLANI.md`](docs/GELISTIRME_PLANI.md)
 
-## Planlanan Stack
+## Çalıştırma
 
-Vite · React 18 · TypeScript · Zustand · Tailwind CSS (frontend-only MVP, mock service layer + localStorage)
+```bash
+npm install
+npm run dev        # geliştirme sunucusu
+npm run build      # tek dosyalık üretim derlemesi (dist/index.html)
+npm run balance    # 1000 maçlık skor dengesi simülasyonu
+```
+
+## Stack
+
+Vite · React 18 · TypeScript · Zustand · Tailwind CSS (frontend-only MVP, mock service layer + localStorage, i18n altyapılı)
 
 ## Görsel Kimlik
 

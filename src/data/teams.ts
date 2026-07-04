@@ -1,0 +1,28 @@
+// Rastgele takım ismi önerileri + ghost rakip takım isimleri
+
+export const teamNamePool: string[] = [
+  'Kadıköy Şimşekleri',
+  'Galata Rüzgârı',
+  'Moda Martıları',
+  'Bornova Panterleri',
+  'Çankaya Kartalları',
+  'Karşıyaka Dalgası',
+  'Üsküdar Volkanı',
+  'Beyoğlu Fırtınası',
+  'Konak Aslanları',
+  'Maltepe Meteorları',
+  'Florya Şahinleri',
+  'Levent Lokomotifi',
+  'Ataşehir Akrepleri',
+  'Bostancı Boranı',
+  'Cihangir Cengâverleri',
+  'Sarıyer Sismikleri',
+  'Alsancak Alevleri',
+  'Nişantaşı Neferleri',
+  'Bakırköy Bizonları',
+  'Feneryolu Fenerleri',
+  'Tarabya Tayfunu',
+  'Göztepe Gezginleri',
+  'Balat Baldıranları',
+  'Kalamış Korsanları',
+];
