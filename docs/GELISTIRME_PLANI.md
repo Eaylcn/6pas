@@ -325,6 +325,7 @@ GoalkeeperScore = kaleci statı + perk bonusu + kaptan bonusu + kimya modifier +
 - **Akış:** 1. yarı eventleri üretilir → UI'da satır satır gösterilir → 30'da otomatik devre arası → müdahale sonrası 2. yarı **güncel modifier'larla** üretilir → 60' final düdüğü.
 - Şut anında sonuç hemen verilmez; hazırlık → şut → gerilim → sonuç satırları sırayla akar (bkz. §17).
 - Maç bitince `pickManOfTheMatch()` (en etkili event katılımcısı) ve "kritik an" seçilir.
+- **Beraberlik yok:** 60' sonunda skor eşitse **10 dakikalık uzatma** (61'-70', 1-2 önemli an) oynanır; uzatma da eşit biterse **seri penaltılar** (5'er atış + gerekirse seri devam) kazananı belirler. Penaltı galibiyeti normal galibiyet sayılır (run devam eder, puan kazanılır).
 - **Skor dengesi hedefi:** tipik skorlar 0-0, 1-0, 1-1, 2-1, 2-0, 3-1; nadir 3-2/4-2/4-3; çok nadir 5-3. 6-5, 7-4 asla. Doğrulama: 1000 maçlık otomatik simülasyonla gol dağılımı raporu (denge fazının çıktısı).
 - `WeatherModifier` alanı maç bağlamında tanımlı ama MVP'de nötr (ileride hava koşulları buraya bağlanır).
 

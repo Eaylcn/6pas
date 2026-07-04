@@ -222,6 +222,18 @@ export interface WeatherModifier {
   chemistryEffect: number;
 }
 
+export interface PenaltyKickLine {
+  text: string;
+  emphasis: 'normal' | 'suspense' | 'goal' | 'save';
+}
+
+export interface PenaltyShootoutResult {
+  homeGoals: number;
+  awayGoals: number;
+  winner: 'home' | 'away';
+  lines: PenaltyKickLine[];
+}
+
 export interface PointsBreakdownEntry {
   reason: string;
   points: number;

@@ -121,6 +121,10 @@ export const tr = {
   match: {
     firstHalf: 'İLK YARI',
     secondHalf: 'İKİNCİ YARI',
+    extraTime: 'UZATMA',
+    penalties: 'SERİ PENALTILAR',
+    extraTimeIntro: 'Skor eşit! Hakem 10 dakikalık uzatmayı işaret ediyor.',
+    penaltiesIntro: 'Uzatma da yetmedi — bu maç seri penaltılarla bitecek!',
     fullTime: 'MAÇ SONU',
     minute: 'Dakika',
     speed: 'Hız',
@@ -145,6 +149,7 @@ export const tr = {
     winHeadline: 'ZAFER!',
     lossHeadline: 'YIKIM…',
     drawHeadline: 'PUANLAR PAYLAŞILDI',
+    penalties: 'Seri Penaltılar',
     finalScore: 'Maç Sonucu',
     pointsEarned: 'Kazanılan Puan',
     manOfTheMatch: 'Maçın Adamı',

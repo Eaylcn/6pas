@@ -6,6 +6,7 @@ export function MatchResultScreen() {
   const {
     session,
     finalScore,
+    penaltyScore,
     playerWon,
     playerDraw,
     rewards,
@@ -31,6 +32,11 @@ export function MatchResultScreen() {
           <span className="font-score text-ink-soft">—</span>
           <span className="scoreboard-digit text-2xl mx-2">{finalScore[1]}</span>
           <span className="font-headline font-bold text-lg">{session.away.info.teamName}</span>
+          {penaltyScore && (
+            <div className="text-sm font-score uppercase tracking-widest text-ink-soft mt-1.5">
+              {t('result.penalties')}: {penaltyScore[0]} - {penaltyScore[1]}
+            </div>
+          )}
         </div>
       </div>
 

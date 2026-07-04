@@ -2,7 +2,13 @@
 // Çalıştırma: npm run balance
 import { createRng } from '../src/utils/random';
 import { findMatchForRun, generateGhostOpponent } from '../src/game/matchmakingEngine';
-import { generateMatchEvents, createNarrationEngine, type SimTeamState } from '../src/game/matchEngine';
+import {
+  generateMatchEvents,
+  generateExtraTimeEvents,
+  simulatePenaltyShootout,
+  createNarrationEngine,
+  type SimTeamState,
+} from '../src/game/matchEngine';
 
 const MATCHES = 1000;
 const rng = createRng(42);
@@ -11,7 +17,8 @@ const scoreDist = new Map<string, number>();
 let totalGoals = 0;
 let totalShots = 0;
 let totalEvents = 0;
-let draws = 0;
+let extraTimes = 0;
+let shootouts = 0;
 let cleanSheets = 0;
 let acrobatics = 0;
 let perkTriggers = 0;
@@ -27,6 +34,16 @@ for (let m = 0; m < MATCHES; m++) {
   const ctx = { home, away, rng, narration };
   const events = [...generateMatchEvents(ctx, 1), ...generateMatchEvents(ctx, 2)];
 
+  // Beraberlik yok: uzatma → seri penaltılar
+  if (home.goals === away.goals) {
+    extraTimes++;
+    events.push(...generateExtraTimeEvents(ctx));
+    if (home.goals === away.goals) {
+      shootouts++;
+      simulatePenaltyShootout(rng, home.info, away.info);
+    }
+  }
+
   const score: [number, number] = [home.goals, away.goals];
   const key = `${Math.max(...score)}-${Math.min(...score)}`;
   scoreDist.set(key, (scoreDist.get(key) ?? 0) + 1);
@@ -34,7 +51,6 @@ for (let m = 0; m < MATCHES; m++) {
   goalCounts.push(home.goals + away.goals);
   totalEvents += events.length;
   totalShots += events.filter((e) => ['goal', 'save', 'miss'].includes(e.result)).length;
-  if (home.goals === away.goals) draws++;
   if (home.goals === 0 || away.goals === 0) cleanSheets++;
   acrobatics += events.filter((e) => e.type === 'rovasata' || e.type === 'rabona').length;
   perkTriggers += events.filter((e) => e.hiddenPerksTriggered.length > 0).length;
@@ -44,7 +60,8 @@ console.log(`Maç sayısı: ${MATCHES}`);
 console.log(`Ortalama gol/maç: ${(totalGoals / MATCHES).toFixed(2)}`);
 console.log(`Ortalama şut/maç: ${(totalShots / MATCHES).toFixed(2)}`);
 console.log(`Ortalama önemli an/maç: ${(totalEvents / MATCHES).toFixed(2)}`);
-console.log(`Beraberlik oranı: %${((draws / MATCHES) * 100).toFixed(1)}`);
+console.log(`Uzatmaya giden maç: %${((extraTimes / MATCHES) * 100).toFixed(1)}`);
+console.log(`Penaltılara giden maç: %${((shootouts / MATCHES) * 100).toFixed(1)}`);
 console.log(`Akrobatik an/maç: ${(acrobatics / MATCHES).toFixed(2)}`);
 console.log(`Perk etkileşimli event/maç: ${(perkTriggers / MATCHES).toFixed(2)}`);
 

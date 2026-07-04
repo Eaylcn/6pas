@@ -12,6 +12,16 @@ interface Props {
   actionLabel?: string;
 }
 
+/** Stat kısaltmalarının açıklamaları (dokun/üzerine gel) */
+const statTitles: Record<string, string> = {
+  ATK: 'Hücum: şut, bitiricilik, çalım, savunma arkası koşu',
+  ORT: 'Orta saha: pas, oyun kurma, tempo, pres kırma',
+  DEF: 'Defans: müdahale, blok, alan kapatma, kademe',
+  REF: 'Refleks: yakın mesafe, karşı karşıya, ani kurtarış',
+  KOM: 'Komuta: hava topu, korner, ceza sahası hakimiyeti',
+  DAĞ: 'Dağıtım: oyun kurma, uzun top, kontra başlatma',
+};
+
 export function PlayerCard({ player, isCaptain, onClick, compact, actionLabel }: Props) {
   const stats = isGoalkeeper(player)
     ? [
@@ -55,8 +65,10 @@ export function PlayerCard({ player, isCaptain, onClick, compact, actionLabel }:
         <>
           <div className="flex gap-3 rule-top pt-1.5">
             {stats.map(([label, value]) => (
-              <div key={label as string} className="flex items-baseline gap-1">
-                <span className="text-[10px] font-score uppercase tracking-widest text-ink-faint">{label}</span>
+              <div key={label as string} className="flex items-baseline gap-1" title={statTitles[label as string]}>
+                <span className="text-[10px] font-score uppercase tracking-widest text-ink-faint border-b border-dotted border-ink/40">
+                  {label}
+                </span>
                 <span className="font-score font-bold text-base">{value}</span>
               </div>
             ))}

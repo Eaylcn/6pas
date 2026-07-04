@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MatchEvent } from '../types';
 import { t } from '../i18n';
 import { Scoreboard } from '../components/Scoreboard';
-import { useGameStore } from '../store/useGameStore';
+import { phaseOf, useGameStore, type MatchPhase } from '../store/useGameStore';
 
 interface FlatLine {
   text: string;
@@ -34,21 +34,47 @@ function flattenEvents(events: MatchEvent[], startScore: [number, number]): Flat
   return lines;
 }
 
-export function MatchSimulationScreen() {
-  const { session, run, reachHalftime, finishMatch } = useGameStore();
-  const isSecondHalf = session?.secondHalfEvents != null;
+function scoreAfter(events: MatchEvent[], fallback: [number, number]): [number, number] {
+  return events.length > 0 ? events[events.length - 1].scoreAfterEvent : fallback;
+}
 
-  const lines = useMemo(() => {
+const phaseLabels: Record<MatchPhase, string> = {
+  H1: 'match.firstHalf',
+  H2: 'match.secondHalf',
+  ET: 'match.extraTime',
+  PENS: 'match.penalties',
+};
+
+export function MatchSimulationScreen() {
+  const { session, run, reachHalftime, afterSecondHalf, afterExtraTime, finishMatch } = useGameStore();
+  const phase: MatchPhase = session ? phaseOf(session) : 'H1';
+
+  const lines = useMemo<FlatLine[]>(() => {
     if (!session) return [];
-    if (isSecondHalf) {
-      const htScore: [number, number] = session.firstHalfEvents.length
-        ? session.firstHalfEvents[session.firstHalfEvents.length - 1].scoreAfterEvent
-        : [0, 0];
-      return flattenEvents(session.secondHalfEvents!, htScore);
+    const h1End = scoreAfter(session.firstHalfEvents, [0, 0]);
+    switch (phase) {
+      case 'H1':
+        return flattenEvents(session.firstHalfEvents, [0, 0]);
+      case 'H2':
+        return flattenEvents(session.secondHalfEvents ?? [], h1End);
+      case 'ET': {
+        const h2End = scoreAfter(session.secondHalfEvents ?? [], h1End);
+        return flattenEvents(session.extraTimeEvents ?? [], h2End);
+      }
+      case 'PENS': {
+        const score: [number, number] = [session.home.goals, session.away.goals];
+        return (session.penalties?.lines ?? []).map((l) => ({
+          text: l.text,
+          minute: 70,
+          score,
+          isGoal: l.emphasis === 'goal',
+          isResult: l.emphasis === 'goal' || l.emphasis === 'save',
+          isSuspense: l.emphasis === 'suspense',
+        }));
+      }
     }
-    return flattenEvents(session.firstHalfEvents, [0, 0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, isSecondHalf]);
+  }, [session, phase]);
 
   const [revealed, setRevealed] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -56,13 +82,13 @@ export function MatchSimulationScreen() {
   const [done, setDone] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
 
-  // Yarı değişince sıfırla
+  // Faz değişince akışı sıfırla
   useEffect(() => {
     setRevealed(0);
     setDone(false);
-  }, [isSecondHalf]);
+  }, [phase]);
 
-  // Hibrit akış: satırlar otomatik düşer; şut anlarında tempo yavaşlar
+  // Hibrit akış: satırlar otomatik düşer; kritik anlarda tempo yavaşlar
   useEffect(() => {
     if (paused || done || lines.length === 0) return;
     if (revealed >= lines.length) {
@@ -78,35 +104,67 @@ export function MatchSimulationScreen() {
     return () => clearTimeout(timer);
   }, [revealed, paused, speed, done, lines]);
 
-  // Yarı bitti → devre arası veya maç sonu
+  // Faz bitti → sıradaki aşama
   useEffect(() => {
     if (!done) return;
     const timer = setTimeout(() => {
-      if (isSecondHalf) void finishMatch();
-      else reachHalftime();
+      switch (phase) {
+        case 'H1':
+          reachHalftime();
+          break;
+        case 'H2':
+          void afterSecondHalf();
+          break;
+        case 'ET':
+          void afterExtraTime();
+          break;
+        case 'PENS':
+          void finishMatch();
+          break;
+      }
     }, 900);
     return () => clearTimeout(timer);
-  }, [done, isSecondHalf, reachHalftime, finishMatch]);
+  }, [done, phase, reachHalftime, afterSecondHalf, afterExtraTime, finishMatch]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
   }, [revealed]);
 
+  // Faz kapanış satırı (render'da saf kalsın diye memoize)
+  const closingLine = useMemo(() => {
+    if (!session || !done) return null;
+    const score = `${session.home.goals} - ${session.away.goals}`;
+    const tied = session.home.goals === session.away.goals;
+    switch (phase) {
+      case 'H1':
+        return session.narration.halftimeLine(score);
+      case 'H2':
+        return tied ? t('match.extraTimeIntro') : session.narration.finalLine(score);
+      case 'ET':
+        return tied ? t('match.penaltiesIntro') : session.narration.finalLine(score);
+      case 'PENS':
+        return null; // kazanan satırı penaltı akışının içinde
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, phase, session]);
+
   if (!session || !run) return null;
 
   const visible = lines.slice(0, revealed);
   const last = visible[visible.length - 1];
-  const score = last?.score ?? (isSecondHalf ? lines[0]?.score ?? [0, 0] : [0, 0]);
-  const minute = last?.minute ?? (isSecondHalf ? 31 : 1);
+  const baseScore: [number, number] =
+    phase === 'H1' ? [0, 0] : lines[0]?.score ?? [session.home.goals, session.away.goals];
+  const score = last?.score ?? baseScore;
+  const minute = last?.minute ?? (phase === 'H1' ? 1 : phase === 'H2' ? 31 : phase === 'ET' ? 61 : 70);
 
   return (
     <div className="max-w-2xl mx-auto">
       <Scoreboard
         homeName={session.home.info.teamName}
         awayName={session.away.info.teamName}
-        score={score as [number, number]}
+        score={score}
         minute={minute}
-        halfLabel={isSecondHalf ? t('match.secondHalf') : t('match.firstHalf')}
+        halfLabel={t(phaseLabels[phase])}
       />
 
       {/* Muhabir sütunu */}
@@ -118,6 +176,12 @@ export function MatchSimulationScreen() {
           </span>
         </div>
         <div ref={logRef} className="px-5 py-4 h-[380px] overflow-y-auto space-y-2.5">
+          {phase === 'ET' && (
+            <p className="headline text-sm text-vermil border-b border-ink/30 pb-2">{t('match.extraTimeIntro')}</p>
+          )}
+          {phase === 'PENS' && (
+            <p className="headline text-sm text-vermil border-b border-ink/30 pb-2">{t('match.penaltiesIntro')}</p>
+          )}
           {visible.map((line, i) => (
             <p
               key={i}
@@ -126,21 +190,19 @@ export function MatchSimulationScreen() {
                   ? 'goal-headline text-2xl py-1'
                   : line.isSuspense
                     ? 'italic text-ink-soft'
-                    : 'text-[15px]'
+                    : line.isResult
+                      ? 'font-semibold text-[15px]'
+                      : 'text-[15px]'
               }`}
             >
               {line.text}
             </p>
           ))}
-          {visible.length === 0 && (
+          {visible.length === 0 && phase === 'H1' && (
             <p className="italic text-ink-faint">Hakem düdüğü çaldı, top santrada…</p>
           )}
-          {done && (
-            <p className="font-headline font-bold text-lg mt-4 border-t border-ink/30 pt-3">
-              {isSecondHalf
-                ? session.narration.finalLine(`${session.home.goals} - ${session.away.goals}`)
-                : session.narration.halftimeLine(`${session.home.goals} - ${session.away.goals}`)}
-            </p>
+          {closingLine && (
+            <p className="font-headline font-bold text-lg mt-4 border-t border-ink/30 pt-3">{closingLine}</p>
           )}
         </div>
       </div>

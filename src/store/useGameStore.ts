@@ -26,11 +26,14 @@ import { calculateTeamChemistry } from '../game/chemistryEngine';
 import {
   calculateTeamPower,
   createNarrationEngine,
+  generateExtraTimeEvents,
   generateMatchEvents,
   pickCriticalMoment,
   pickManOfTheMatch,
+  simulatePenaltyShootout,
   type SimTeamState,
 } from '../game/matchEngine';
+import type { PenaltyShootoutResult } from '../types';
 import type { NarrationEngine } from '../game/narrationEngine';
 import { generateHalfTimeSummary, applySubstitution, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { calculateRunPoints } from '../game/scoringEngine';
@@ -46,7 +49,18 @@ interface MatchSession {
   away: SimTeamState;
   firstHalfEvents: MatchEvent[];
   secondHalfEvents: MatchEvent[] | null;
+  extraTimeEvents: MatchEvent[] | null;
+  penalties: PenaltyShootoutResult | null;
   subsUsed: number;
+}
+
+export type MatchPhase = 'H1' | 'H2' | 'ET' | 'PENS';
+
+export function phaseOf(session: MatchSession): MatchPhase {
+  if (session.penalties) return 'PENS';
+  if (session.extraTimeEvents) return 'ET';
+  if (session.secondHalfEvents) return 'H2';
+  return 'H1';
 }
 
 interface GameState {
@@ -74,6 +88,7 @@ interface GameState {
   halftimeSummary: string[];
   rewards: MatchRewards | null;
   finalScore: [number, number] | null;
+  penaltyScore: [number, number] | null;
   playerWon: boolean;
   playerDraw: boolean;
   manOfTheMatch: string | null;
@@ -99,6 +114,8 @@ interface GameState {
   halftimeSetPlan: (updates: Partial<TacticalPlan>) => void;
   makeSubstitution: (outId: string, inId: string) => string | null;
   startSecondHalf: () => void;
+  afterSecondHalf: () => Promise<void>;
+  afterExtraTime: () => Promise<void>;
   finishMatch: () => Promise<void>;
   afterResult: () => Promise<void>;
 }
@@ -148,6 +165,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   halftimeSummary: [],
   rewards: null,
   finalScore: null,
+  penaltyScore: null,
   playerWon: false,
   playerDraw: false,
   manOfTheMatch: null,
@@ -180,6 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       session: null,
       rewards: null,
       finalScore: null,
+      penaltyScore: null,
       screen: 'mode-select',
     });
   },
@@ -290,10 +309,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const away: SimTeamState = { info: opponent, goals: 0, acrobaticsUsed: 0 };
     const firstHalfEvents = generateMatchEvents({ home, away, rng, narration }, 1);
     set({
-      session: { rng, narration, home, away, firstHalfEvents, secondHalfEvents: null, subsUsed: 0 },
+      session: {
+        rng,
+        narration,
+        home,
+        away,
+        firstHalfEvents,
+        secondHalfEvents: null,
+        extraTimeEvents: null,
+        penalties: null,
+        subsUsed: 0,
+      },
       screen: 'match',
       rewards: null,
       finalScore: null,
+      penaltyScore: null,
       halftimeSummary: [],
     });
   },
@@ -346,17 +376,51 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ session: { ...session, secondHalfEvents: events }, screen: 'match' });
   },
 
+  // 60' sonunda eşitlik varsa uzatma oynanır — maç berabere bitmez
+  afterSecondHalf: async () => {
+    const session = get().session;
+    if (!session) return;
+    if (session.home.goals !== session.away.goals) {
+      await get().finishMatch();
+      return;
+    }
+    const events = generateExtraTimeEvents({
+      home: session.home,
+      away: session.away,
+      rng: session.rng,
+      narration: session.narration,
+    });
+    set({ session: { ...session, extraTimeEvents: events } });
+  },
+
+  // Uzatma da eşit biterse seri penaltılar
+  afterExtraTime: async () => {
+    const session = get().session;
+    if (!session) return;
+    if (session.home.goals !== session.away.goals) {
+      await get().finishMatch();
+      return;
+    }
+    const penalties = simulatePenaltyShootout(session.rng, session.home.info, session.away.info);
+    set({ session: { ...session, penalties } });
+  },
+
   finishMatch: async () => {
     const { session, run } = get();
     if (!session || !run || !session.secondHalfEvents) return;
-    const events = [...session.firstHalfEvents, ...session.secondHalfEvents];
+    const events = [
+      ...session.firstHalfEvents,
+      ...session.secondHalfEvents,
+      ...(session.extraTimeEvents ?? []),
+    ];
     const finalScore: [number, number] = [session.home.goals, session.away.goals];
-    const won = finalScore[0] > finalScore[1];
-    const draw = finalScore[0] === finalScore[1];
+    const pens = session.penalties;
+    // Beraberlik yok: eşitlik uzatma + penaltılarla mutlaka çözülür
+    const won = finalScore[0] > finalScore[1] || (finalScore[0] === finalScore[1] && pens?.winner === 'home');
 
     const rewards = calculateRunPoints({
       won,
-      draw,
+      draw: false,
       myGoals: finalScore[0],
       opponentGoals: finalScore[1],
       streakBeforeMatch: run.streak,
@@ -365,32 +429,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       opponent: session.away.info,
     });
 
-    let updatedRun: Run;
-    if (won || draw) {
-      updatedRun = won
-        ? await runService.continueRunAfterWin(run, rewards.total, rewards.newStreak)
-        : run;
-      if (draw) await runService.saveRun(run);
-    } else {
-      updatedRun = await runService.eliminateRun(run);
-    }
+    const updatedRun: Run = won
+      ? await runService.continueRunAfterWin(run, rewards.total, rewards.newStreak)
+      : await runService.eliminateRun(run);
 
     await useUserStore.getState().applyMatchOutcome({
       pointsGained: rewards.total,
       won,
-      lost: !won && !draw,
+      lost: !won,
       streak: rewards.newStreak,
-      activeRunId: won || draw ? updatedRun.id : null,
+      activeRunId: won ? updatedRun.id : null,
     });
 
     set({
-      run: won || draw ? updatedRun : null,
+      run: won ? updatedRun : null,
       rewards,
       finalScore,
+      penaltyScore: pens ? [pens.homeGoals, pens.awayGoals] : null,
       playerWon: won,
-      playerDraw: draw,
+      playerDraw: false,
       manOfTheMatch: pickManOfTheMatch(events, session.home.info, session.away.info),
-      criticalMoment: pickCriticalMoment(events),
+      criticalMoment: pens ? pens.lines[pens.lines.length - 1].text : pickCriticalMoment(events),
       screen: 'match-result',
     });
   },

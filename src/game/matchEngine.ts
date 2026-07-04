@@ -328,8 +328,8 @@ function resolveDuel(ctx: DuelContext): MatchEvent {
 }
 
 // ---- Yarı simülasyonu ----
-function pickEventMinutes(rng: Rng, half: 1 | 2, count: number): number[] {
-  const [min, max] = half === 1 ? [2, 29] : [32, 59];
+function pickEventMinutes(rng: Rng, range: [number, number], count: number): number[] {
+  const [min, max] = range;
   const minutes = new Set<number>();
   let guard = 0;
   while (minutes.size < count && guard < 200) {
@@ -354,12 +354,16 @@ export interface HalfContext {
   weather?: WeatherModifier;
 }
 
-export function generateMatchEvents(ctx: HalfContext, half: 1 | 2): MatchEvent[] {
+export function generateMatchEvents(
+  ctx: HalfContext,
+  half: 1 | 2,
+  override?: { range: [number, number]; count: number },
+): MatchEvent[] {
   const { rng, narration } = ctx;
   const weather = ctx.weather ?? getNeutralWeather();
   const events: MatchEvent[] = [];
-  const count = rng.int(4, 6);
-  const minutes = pickEventMinutes(rng, half, count);
+  const count = override?.count ?? rng.int(4, 6);
+  const minutes = pickEventMinutes(rng, override?.range ?? (half === 1 ? [2, 29] : [32, 59]), count);
 
   for (const minute of minutes) {
     // Pozisyon üretimi: orta saha gücü × taktik temposu × kimya
@@ -385,6 +389,93 @@ export function generateMatchEvents(ctx: HalfContext, half: 1 | 2): MatchEvent[]
     events.push(resolveDuel(duel));
   }
   return events;
+}
+
+/** Uzatma: 61'-70' arası 1-2 önemli an (skor eşitse oynanır) */
+export function generateExtraTimeEvents(ctx: HalfContext): MatchEvent[] {
+  return generateMatchEvents(ctx, 2, { range: [62, 70], count: ctx.rng.int(1, 2) });
+}
+
+// ---- Seri penaltılar ----
+const penSuspense = ['Koşuya geçti…', 'Stadyumda çıt yok…', 'Derin bir nefes aldı…', 'Kaleciyle göz göze…', 'Topu yerleştirdi, geri çekildi…'];
+const penGoal = ['GOOOL! Köşeye çakıldı! ({score})', 'GOOOL! Kaleci ters köşede kaldı! ({score})', 'GOOOL! Üst köşeye, nokta atışı! ({score})', 'GOOOL! Soğukkanlı bir vuruş! ({score})'];
+const penSave = ['{gk} KURTARDI! Köşeye uzanıp topu çeldi! ({score})', '{gk} KURTARDI! Hamlesini doğru köşeye yaptı! ({score})', '{gk} KURTARDI! Ayaklarıyla kapattı! ({score})'];
+const penMiss = ['Direkten döndü! İnanılmaz! ({score})', 'Auta gitti! Topu kalenin üstünden aşırdı! ({score})'];
+
+export function simulatePenaltyShootout(
+  rng: Rng,
+  home: TeamMatchInfo,
+  away: TeamMatchInfo,
+): import('../types').PenaltyShootoutResult {
+  const lines: import('../types').PenaltyShootoutResult['lines'] = [];
+  const shootersOf = (t: TeamMatchInfo) => [...fieldPlayersOf(t)].sort((a, b) => b.atk - a.atk);
+  const homeShooters = shootersOf(home);
+  const awayShooters = shootersOf(away);
+  const homeGk = goalkeeperOf(away); // ev sahibinin şutunu rakip kaleci karşılar
+  const awayGk = goalkeeperOf(home);
+
+  let hg = 0;
+  let ag = 0;
+  const usedTexts = new Set<string>();
+  const fresh = (bank: string[]) => {
+    const pool = bank.filter((b) => !usedTexts.has(b));
+    const pick = rng.pick(pool.length > 0 ? pool : bank);
+    usedTexts.add(pick);
+    return pick;
+  };
+
+  const takeKick = (side: 'home' | 'away', round: number) => {
+    const team = side === 'home' ? home : away;
+    const shooters = side === 'home' ? homeShooters : awayShooters;
+    const gk = side === 'home' ? homeGk : awayGk;
+    const shooter = shooters[(round - 1) % shooters.length];
+    const roll = rng.d20();
+    const gkRoll = rng.d20();
+    // ~%70 temel dönüşüm; stat farkı ibreyi oynatır
+    const scored = shooter.atk + roll >= (gk ? gk.ref : 60) + gkRoll - 5;
+    if (scored) {
+      if (side === 'home') hg++;
+      else ag++;
+    }
+    const score = `${hg} - ${ag}`;
+    lines.push({ text: `${round}. penaltı — ${team.teamName}: ${shooter.name} topun başında.`, emphasis: 'normal' });
+    lines.push({ text: fresh(penSuspense), emphasis: 'suspense' });
+    if (scored) {
+      lines.push({ text: fresh(penGoal).replace('{score}', score), emphasis: 'goal' });
+    } else {
+      const saveBankPick = rng.chance(0.65) ? penSave : penMiss;
+      lines.push({
+        text: fresh(saveBankPick).replace('{gk}', gk?.name ?? 'Kaleci').replace('{score}', score),
+        emphasis: 'save',
+      });
+    }
+  };
+
+  // 5'er penaltı; matematiksel olarak bittiyse erken durur
+  for (let round = 1; round <= 5; round++) {
+    takeKick('home', round);
+    if (hg - ag > 5 - round) break;
+    takeKick('away', round);
+    if (Math.abs(hg - ag) > 5 - round) break;
+  }
+  // Seri devam: kazanan çıkana kadar (güvenlik tavanı 20 tur)
+  let round = 6;
+  while (hg === ag && round <= 20) {
+    takeKick('home', round);
+    takeKick('away', round);
+    round++;
+  }
+  // Aşırı uç durum: hâlâ eşitse son turu zar keser
+  if (hg === ag) {
+    if (rng.chance(0.5)) hg++;
+    else ag++;
+    lines.push({ text: `Ve nihayet fark yaratıldı! (${hg} - ${ag})`, emphasis: 'goal' });
+  }
+
+  const winner = hg > ag ? 'home' : 'away';
+  const winnerName = winner === 'home' ? home.teamName : away.teamName;
+  lines.push({ text: `Seri penaltıların sonunda kazanan: ${winnerName}! (${hg} - ${ag})`, emphasis: 'goal' });
+  return { homeGoals: hg, awayGoals: ag, winner, lines };
 }
 
 // ---- Maç sonu değerlendirmeleri ----
