@@ -24,6 +24,10 @@ interface FlatLine {
   icon: string | null;
   /** Perk tetiklendiğinde sonuç satırının altına düşen "muhabir notu" */
   perkNote: string | null;
+  /** Atağı yapan taraf — kim kimin oyuncusu karışmasın */
+  side: 'home' | 'away' | null;
+  /** Olay bloğunun ilk satırı (takım etiketi buraya basılır) */
+  isEventStart: boolean;
 }
 
 function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string | null {
@@ -54,8 +58,20 @@ function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string
 function perkNoteOf(e: MatchEvent): string | null {
   if (e.hiddenPerksTriggered.length === 0) return null;
   if (!['goal', 'save', 'blocked'].includes(e.result)) return null;
-  const perk = getPerk(e.hiddenPerksTriggered[0]);
-  return perk ? `✍ Muhabir notu: “${perk.name}” imzası` : null;
+  for (const perkId of e.hiddenPerksTriggered) {
+    const perk = getPerk(perkId);
+    if (!perk) continue;
+    const ownerId = e.playersInvolved.find((id) => {
+      try {
+        return getPlayer(id).perks.includes(perkId);
+      } catch {
+        return false;
+      }
+    });
+    const owner = ownerId ? getPlayer(ownerId).name.split(' ').slice(-1)[0] : null;
+    return owner ? `✍ Muhabir notu: “${perk.name}” imzası — ${owner}` : `✍ Muhabir notu: “${perk.name}” imzası`;
+  }
+  return null;
 }
 
 function buildLines(session: MatchSession): FlatLine[] {
@@ -75,6 +91,8 @@ function buildLines(session: MatchSession): FlatLine[] {
         isSuspense,
         icon: resultIcon(e, i, e.textLines.length),
         perkNote: isLast ? perkNoteOf(e) : null,
+        side: e.attackingTeam,
+        isEventStart: i === 0,
       });
     });
   }
@@ -89,6 +107,8 @@ function buildLines(session: MatchSession): FlatLine[] {
         isSuspense: l.emphasis === 'suspense',
         icon: l.emphasis === 'goal' ? '⚽' : l.emphasis === 'save' ? '🧤' : null,
         perkNote: null,
+        side: null,
+        isEventStart: false,
       });
     }
   }
@@ -198,8 +218,14 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
   const eligible = outPlayer ? home.info.bench.filter((b) => b.position === outPlayer.position) : [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="news-card max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 bg-ink/60 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="min-h-full flex items-start sm:items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="news-card max-w-lg w-full p-5 my-6">
         <div className="flex items-center justify-between mb-1">
           <h3 className="headline text-lg">{t('match.sideline')}</h3>
           <button className="btn-outline text-xs px-2 py-1" onClick={onClose}>
@@ -281,6 +307,7 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
           >
             {t('match.applyStyle')}
           </button>
+        </div>
         </div>
       </div>
     </div>
@@ -421,7 +448,25 @@ export function MatchSimulationScreen() {
             <p className="headline text-sm text-vermil border-b border-ink/30 pb-2">{t('match.penaltiesIntro')}</p>
           )}
           {visible.map((line, i) => (
-            <div key={i} className="line-in">
+            <div
+              key={i}
+              className={`line-in pl-2 border-l-2 ${
+                line.side === 'home'
+                  ? 'border-grass/60'
+                  : line.side === 'away'
+                    ? 'border-vermil/50'
+                    : 'border-ink/15'
+              }`}
+            >
+              {line.isEventStart && line.side && (
+                <span
+                  className={`tag-label text-[9px] mb-0.5 inline-block ${
+                    line.side === 'home' ? 'text-grass-deep border-grass' : 'text-vermil border-vermil'
+                  }`}
+                >
+                  {line.side === 'home' ? session.sim.home.info.teamName : session.sim.away.info.teamName}
+                </span>
+              )}
               <p
                 className={`leading-relaxed ${
                   line.isGoal

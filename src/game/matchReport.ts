@@ -1,7 +1,7 @@
 // Maç sonu "gazete ön sayfası" verisi: manşet üreteci + istatistik türetme.
 // Motora dokunmaz; yalnızca event verisinden okur.
 import type { MatchEvent, PenaltyShootoutResult, TeamMatchInfo } from '../types';
-import { getPlayer } from '../data';
+import { getPerk, getPlayer } from '../data';
 
 export interface TeamMatchStats {
   chances: number;
@@ -28,6 +28,12 @@ export interface CardLine {
   side: 'home' | 'away'; // kartı gören taraf
 }
 
+export interface SignatureMove {
+  perkName: string;
+  owner: string;
+  count: number;
+}
+
 export interface MatchReport {
   headline: string;
   subhead: string;
@@ -36,6 +42,8 @@ export interface MatchReport {
   cards: CardLine[];
   stats: { home: TeamMatchStats; away: TeamMatchStats };
   motm: { name: string; reason: string } | null;
+  /** Maçta iz bırakan perk tetiklenmeleri (perk + sahibi + kaç kez) */
+  signatures: SignatureMove[];
 }
 
 const SHOT_RESULTS = new Set(['goal', 'save', 'miss']);
@@ -220,6 +228,30 @@ export function buildMatchReport(input: {
     }
   }
 
+  // İmza hareketleri: sonuca dokunan perk tetiklenmeleri
+  const sigMap = new Map<string, SignatureMove>();
+  for (const e of events) {
+    if (e.hiddenPerksTriggered.length === 0) continue;
+    if (!['goal', 'save', 'blocked'].includes(e.result)) continue;
+    for (const perkId of e.hiddenPerksTriggered) {
+      const perk = getPerk(perkId);
+      if (!perk) continue;
+      const ownerId = e.playersInvolved.find((id) => {
+        try {
+          return getPlayer(id).perks.includes(perkId);
+        } catch {
+          return false;
+        }
+      });
+      if (!ownerId) continue;
+      const key = `${perkId}:${ownerId}`;
+      const existing = sigMap.get(key);
+      if (existing) existing.count++;
+      else sigMap.set(key, { perkName: perk.name, owner: surnameOf(ownerId), count: 1 });
+    }
+  }
+  const signatures = [...sigMap.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+
   const headline = pickHeadline({
     won,
     finalScore,
@@ -232,5 +264,5 @@ export function buildMatchReport(input: {
   });
   const subhead = buildSubhead({ won, goals, penalties, stats, home, away });
 
-  return { headline, subhead, halfScore, goals, cards, stats, motm };
+  return { headline, subhead, halfScore, goals, cards, stats, motm, signatures };
 }

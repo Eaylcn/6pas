@@ -150,6 +150,27 @@ export function MatchResultScreen() {
         )}
       </div>
 
+      {/* İmza hareketleri: perklerin maça etkisi */}
+      {report.signatures.length > 0 && (
+        <div className="news-card p-4 mb-4">
+          <div className="tag-label mb-2">✍ İMZA HAREKETLERİ</div>
+          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            {report.signatures.map((s, i) => (
+              <div key={i} className="flex items-baseline justify-between">
+                <span>
+                  <span className="font-headline font-bold">“{s.perkName}”</span>
+                  <span className="text-ink-soft"> — {s.owner}</span>
+                </span>
+                {s.count > 1 && <span className="font-score font-bold text-gold">×{s.count}</span>}
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] italic text-ink-faint mt-2">
+            Bu özellikler maçta pozisyonların sonucuna doğrudan dokundu.
+          </p>
+        </div>
+      )}
+
       {/* Oyuncu karneleri (SofaScore tarzı) */}
       {ratings && (
         <div className="news-card p-4 mb-4">

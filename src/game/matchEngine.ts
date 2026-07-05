@@ -346,7 +346,8 @@ function buildPenaltyEvent(ctx: DuelContext, fouledPlayer: FieldPlayer): MatchEv
   const shotRoll = rng.d20();
   const gkRoll = rng.d20();
   rolls.push({ label: 'penaltı', value: shotRoll }, { label: 'kaleci', value: gkRoll });
-  const scored = shooter.atk + shotRoll >= (gk ? gk.ref : 60) + gkRoll - 5;
+  // ~%80 dönüşüm hedefi — penaltı kaçırmak nadir ve acı olmalı
+  const scored = shooter.atk + shotRoll >= (gk ? gk.ref : 60) + gkRoll - 8;
   const result: EventResult = scored ? 'goal' : rng.chance(0.65) ? 'save' : 'miss';
   if (result === 'goal') ctx.attacking.goals += 1;
 
@@ -832,7 +833,8 @@ export function simulatePenaltyShootout(rng: Rng, home: TeamMatchInfo, away: Tea
     const shooter = shooters[(round - 1) % shooters.length];
     const roll = rng.d20();
     const gkRoll = rng.d20();
-    const scored = shooter.atk + roll >= (gk ? gk.ref : 60) + gkRoll - 5;
+    // ~%80 dönüşüm: seri penaltılarda da kaçırmak istisna olmalı
+    const scored = shooter.atk + roll >= (gk ? gk.ref : 60) + gkRoll - 8;
     if (scored) {
       if (side === 'home') hg++;
       else ag++;

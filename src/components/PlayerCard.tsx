@@ -64,13 +64,13 @@ export function PlayerCard({
       onClick={onClick}
     >
       {chemDelta != null && (
-        <span
-          className={`absolute -top-2 right-2 tag-label font-bold ${
-            chemDelta > 0 ? 'bg-grass text-paper border-grass' : 'bg-paper-deep'
-          }`}
-        >
-          Kimya {chemDelta > 0 ? `+${chemDelta}` : '±0'}
-        </span>
+        <div className="flex justify-end -mt-1 -mb-1">
+          <span
+            className={`tag-label font-bold ${chemDelta > 0 ? 'bg-grass text-paper border-grass' : 'bg-paper-deep'}`}
+          >
+            Kimya {chemDelta > 0 ? `+${chemDelta}` : '±0'}
+          </span>
+        </div>
       )}
       <div className="flex items-start justify-between gap-2">
         <div>

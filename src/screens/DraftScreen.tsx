@@ -115,8 +115,9 @@ export function DraftScreen() {
 
       {/* Aday seçim popup'ı — seçim zorunlu, dışarı tıklayarak kapanmaz */}
       {candidates && activeSlotPosition && (
-        <div className="fixed inset-0 z-50 bg-ink/70 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="news-card max-w-3xl w-full p-5 my-6">
+        <div className="fixed inset-0 z-50 bg-ink/70 overflow-y-auto">
+          <div className="min-h-full flex items-start sm:items-center justify-center p-4">
+            <div className="news-card max-w-3xl w-full p-5 my-6">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className="tag-label">
                 {t('draft.pickForSlot', { position: t(`position.${activeSlotPosition}`) })}
@@ -147,8 +148,10 @@ export function DraftScreen() {
                   statBars
                   chemDelta={chemDeltaOf(c)}
                   revealIcon
+                  detailed
                 />
               ))}
+            </div>
             </div>
           </div>
         </div>
