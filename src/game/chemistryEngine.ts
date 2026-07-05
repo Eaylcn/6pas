@@ -8,6 +8,8 @@ const LEAGUE_PAIR = 3;
 const NATION_PAIR = 3;
 const CAPTAIN_LEAGUE = 2;
 const CAPTAIN_NATION = 2;
+/** Mevkisi dışında oynayan her oyuncu takım uyumunu bozar */
+const OUT_OF_POSITION_PENALTY = 8;
 
 function countPairs(players: AnyPlayer[], key: (p: AnyPlayer) => string): number {
   let pairs = 0;
@@ -55,8 +57,13 @@ const tierDescriptions: Record<ChemistryBreakdown['tier'], string> = {
 /**
  * Sahadaki 6 oyuncu üzerinden takım kimyası (0-100).
  * Devre arası değişikliklerinden sonra yeniden hesaplanır.
+ * outOfPositionCount: mevkisi dışında dizilen oyuncu sayısı (kadro düzenlemeden gelir).
  */
-export function calculateTeamChemistry(players: AnyPlayer[], captainId: string | null): ChemistryBreakdown {
+export function calculateTeamChemistry(
+  players: AnyPlayer[],
+  captainId: string | null,
+  outOfPositionCount = 0,
+): ChemistryBreakdown {
   const clubLinks = calculateClubLinks(players);
   const leagueLinks = calculateLeagueLinks(players);
   const nationLinks = calculateNationLinks(players);
@@ -80,7 +87,12 @@ export function calculateTeamChemistry(players: AnyPlayer[], captainId: string |
   }
 
   const score = clamp(
-    BASE + clubLinks * CLUB_PAIR + leagueLinks * LEAGUE_PAIR + nationLinks * NATION_PAIR + captainLinks,
+    BASE +
+      clubLinks * CLUB_PAIR +
+      leagueLinks * LEAGUE_PAIR +
+      nationLinks * NATION_PAIR +
+      captainLinks -
+      outOfPositionCount * OUT_OF_POSITION_PENALTY,
     0,
     100,
   );
@@ -92,6 +104,7 @@ export function calculateTeamChemistry(players: AnyPlayer[], captainId: string |
   if (nationLinks > 0) sources.push(`${nationLinks} oyuncu çifti aynı uyruktan`);
   if (captainLeagueCount > 0) sources.push(`Kaptanla ${captainLeagueCount} oyuncu aynı ligden`);
   if (captainNationCount > 0) sources.push(`Kaptanla ${captainNationCount} oyuncu aynı uyruktan`);
+  if (outOfPositionCount > 0) sources.push(`‼ ${outOfPositionCount} oyuncu mevkisi dışında oynuyor`);
   if (sources.length === 0) sources.push('Kadro henüz ortak bir bağ kurmadı');
 
   return {

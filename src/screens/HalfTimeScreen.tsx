@@ -28,14 +28,10 @@ export function HalfTimeScreen() {
   const pitchSlots: PitchSlotView[] = me.players.map((p) => ({ id: p.id, position: p.position, player: p }));
   const pitchBench: PitchSlotView[] = me.bench.map((p) => ({ id: p.id, position: p.position, player: p }));
 
-  const outPlayer = outId ? (me.players.find((p) => p.id === outId) as FieldPlayer | undefined) : undefined;
+  const outPlayer = outId ? me.players.find((p) => p.id === outId) : undefined;
   const eligibleIds = useMemo(() => {
     if (!outPlayer) return new Set<string>();
-    return new Set(
-      me.bench
-        .filter((b) => !isGoalkeeper(b) && (b as FieldPlayer).position === outPlayer.position)
-        .map((b) => b.id),
-    );
+    return new Set(me.bench.filter((b) => b.position === outPlayer.position).map((b) => b.id));
   }, [me.bench, outPlayer]);
 
   const handleToken = (player: AnyPlayer, isBench: boolean) => {
@@ -45,10 +41,6 @@ export function HalfTimeScreen() {
       return;
     }
     if (!isBench) {
-      if (isGoalkeeper(player)) {
-        setError('MVP’de kaleci değişikliği yok.');
-        return;
-      }
       setOutId(player.id === outId ? null : player.id);
       return;
     }

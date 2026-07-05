@@ -40,7 +40,7 @@ export function generateGhostOpponent(rng: Rng, avoidName?: string): TeamMatchIn
   }
 
   const bench: AnyPlayer[] = [];
-  const benchPositions = ['ATK', 'MID', 'DEF'] as const;
+  const benchPositions = ['GK', 'DEF', 'MID', 'ATK'] as const;
   for (const pos of benchPositions) {
     const candidates = generateDraftCandidates(rng, pos, exclude);
     if (candidates.length === 0) continue;

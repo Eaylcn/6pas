@@ -46,8 +46,13 @@ export function buildSquadSlots(formation: Formation): SquadSlot[] {
   return slots;
 }
 
+/** 4 yedek: zorunlu 1 Kaleci + 1 Defans + 1 Orta Saha + 1 Atak */
 export function buildBenchSlots(): BenchSlot[] {
-  return [0, 1, 2].map((i) => ({ id: `bench-${i}`, position: null, playerId: null }));
+  return (['GK', 'DEF', 'MID', 'ATK'] as const).map((pos) => ({
+    id: `bench-${pos.toLowerCase()}`,
+    position: pos,
+    playerId: null,
+  }));
 }
 
 /** İlk seçim kaptan olur — draft akışında ilk dolan slotun oyuncusu */

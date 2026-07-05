@@ -55,10 +55,8 @@ export function validateSubstitution(
   const outPlayer = team.players.find((p) => p.id === outPlayerId);
   const inPlayer = team.bench.find((p) => p.id === inPlayerId);
   if (!outPlayer || !inPlayer) return { ok: false, reason: 'Oyuncu bulunamadı' };
-  if (isGoalkeeper(outPlayer) || isGoalkeeper(inPlayer)) {
-    return { ok: false, reason: 'MVP’de kaleci değişikliği yok' };
-  }
-  if ((outPlayer as FieldPlayer).position !== (inPlayer as FieldPlayer).position) {
+  // Kaleci ↔ kaleci dahil, yalnızca aynı pozisyon içinde değişiklik
+  if (outPlayer.position !== inPlayer.position) {
     return { ok: false, reason: 'Değişiklik yalnızca aynı pozisyon içinde yapılabilir' };
   }
   return { ok: true };

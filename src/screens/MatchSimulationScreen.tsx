@@ -193,11 +193,9 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
   const home = session.sim.home;
   const subsLeft = MAX_SUBSTITUTIONS - home.subsUsed;
   const tacticLeft = MAX_INMATCH_TACTIC_CHANGES - session.inMatchTacticChanges;
-  const fieldPlayers = home.info.players.filter((p): p is FieldPlayer => !isGoalkeeper(p));
+  const fieldPlayers = home.info.players; // kaleci dahil — GK↔GK değişikliği serbest
   const outPlayer = outId ? fieldPlayers.find((p) => p.id === outId) : null;
-  const eligible = outPlayer
-    ? home.info.bench.filter((b) => !isGoalkeeper(b) && (b as FieldPlayer).position === outPlayer.position)
-    : [];
+  const eligible = outPlayer ? home.info.bench.filter((b) => b.position === outPlayer.position) : [];
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-4" onClick={onClose}>
@@ -329,7 +327,12 @@ export function MatchSimulationScreen() {
     if (!endingRef.current) {
       endingRef.current = true;
       const timer = setTimeout(() => void endPhase(), 1400);
-      return () => clearTimeout(timer);
+      return () => {
+        // Zamanlayıcı iptal edilirse (duraklat/panel) kilit de açılmalı —
+        // yoksa faz sonu bir daha tetiklenmez ve akış donar
+        clearTimeout(timer);
+        endingRef.current = false;
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, cursor, lines.length, paused, sidelineOpen, speed]);

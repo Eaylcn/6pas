@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { AnyPlayer, FieldPosition } from '../types';
+import type { AnyPlayer } from '../types';
 import { t } from '../i18n';
 import { getPlayer } from '../data';
 import { SectionHeadline } from '../components/NewspaperShell';
@@ -17,9 +17,9 @@ export function DraftScreen() {
     activeSlotId,
     activeSlotPosition,
     candidates,
-    benchPositionPending,
+    rerollUsed,
     openSlot,
-    chooseBenchPosition,
+    rerollCandidates,
     pickCandidate,
     draftTeamName,
   } = useGameStore();
@@ -28,7 +28,6 @@ export function DraftScreen() {
   const [captainBanner, setCaptainBanner] = useState(false);
   const prevCaptain = useRef<string | null>(captainId);
 
-  // İlk seçim yapıldığında "Kaptan belirlendi" şeridi
   useEffect(() => {
     if (prevCaptain.current === null && captainId) {
       setCaptainBanner(true);
@@ -59,10 +58,10 @@ export function DraftScreen() {
 
   const pickedCount =
     squadSlots.filter((s) => s.playerId).length + benchSlots.filter((b) => b.playerId).length;
+  const totalPicks = squadSlots.length + benchSlots.length;
   const isFirstPick = captainId === null;
   const isBenchSlot = activeSlotId?.startsWith('bench') ?? false;
 
-  // Aday seçilirse kimyanın kaç puan değişeceği (yalnızca ilk 6 slotları için)
   const chemDeltaOf = (candidate: AnyPlayer): number | null => {
     if (isBenchSlot) return null;
     const withCandidate = [...pickedOnField, candidate];
@@ -76,88 +75,84 @@ export function DraftScreen() {
     <div>
       <SectionHeadline sub={`${draftTeamName} — ${t('draft.sub')}`}>{t('draft.headline')}</SectionHeadline>
 
-      <div className="flex items-center justify-center gap-3 mb-4">
+      <div className="flex items-center justify-center gap-3 mb-4 flex-wrap">
         <span className="tag-label">
-          Seçim {pickedCount} / 9
+          Seçim {pickedCount} / {totalPicks}
+        </span>
+        <span className={`tag-label ${rerollUsed ? 'opacity-40' : ''}`}>
+          🎲 Yeniden çevirme: {rerollUsed ? 'kullanıldı' : '1 hak'}
         </span>
         {captainBanner && (
           <span className="tag-label bg-ink text-paper border-ink font-bold line-in">Ⓒ KAPTAN BELİRLENDİ</span>
         )}
       </div>
 
-      <div className="grid md:grid-cols-[minmax(280px,380px)_1fr] gap-6">
-        {/* Sol: saha krokisi */}
+      <div className="grid md:grid-cols-[minmax(280px,420px)_1fr] gap-6">
         <div className="space-y-3">
           <PitchView
             slots={pitchSlots}
             bench={pitchBench}
             captainId={captainId}
-            activeSlotId={benchPositionPending ?? activeSlotId}
+            activeSlotId={activeSlotId}
             onSlotClick={openSlot}
             onSelectPlayer={setInspected}
           />
           <ChemistryLegend />
-          {chemistry && <ChemistryPanel chemistry={chemistry} />}
-          {inspected && (
-            <PlayerCard player={inspected} isCaptain={inspected.id === captainId} detailed />
-          )}
         </div>
-
-        {/* Sağ: adaylar */}
-        <div>
-          {benchPositionPending ? (
-            <div className="news-card p-5">
-              <div className="tag-label mb-3">{t('draft.benchPickPosition')}</div>
-              <div className="flex gap-2">
-                {(['DEF', 'MID', 'ATK'] as FieldPosition[]).map((pos) => (
-                  <button
-                    key={pos}
-                    className="btn-outline text-sm flex-1"
-                    onClick={() => chooseBenchPosition(benchPositionPending, pos)}
-                  >
-                    {t(`position.${pos}`)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : candidates && activeSlotPosition ? (
-            <div>
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                <span className="tag-label">
-                  {t('draft.pickForSlot', { position: t(`position.${activeSlotPosition}`) })}
-                </span>
-                {hasIconCandidate && (
-                  <span className="tag-label bg-gold-foil text-ink border-gold font-bold line-in">
-                    ★ MATBAADAN SON DAKİKA: İKON ÇIKTI!
-                  </span>
-                )}
-              </div>
-              {isFirstPick && (
-                <p className="text-sm font-semibold text-vermil mb-3">⭐ {t('draft.firstPickNote')}</p>
-              )}
-              <div className="grid gap-3 sm:grid-cols-3">
-                {candidates.map((c) => (
-                  <PlayerCard
-                    key={c.id}
-                    player={c}
-                    onClick={() => pickCandidate(c.id)}
-                    actionLabel={t('draft.choose')}
-                    statBars
-                    chemDelta={chemDeltaOf(c)}
-                    revealIcon
-                  />
-                ))}
-              </div>
-            </div>
+        <div className="space-y-3">
+          {chemistry && <ChemistryPanel chemistry={chemistry} />}
+          {inspected ? (
+            <PlayerCard player={inspected} isCaptain={inspected.id === captainId} detailed />
           ) : (
-            <div className="news-card p-8 text-center text-ink-soft italic">
+            <div className="news-card p-6 text-center text-ink-soft italic text-sm">
               Sahadan boş bir mevkiye dokun; o pozisyon için üç aday masaya gelsin.
               <br />
-              <span className="text-xs">Dolu jetonlara dokunarak kimya bağlarını görebilirsin.</span>
+              <span className="text-xs">Dolu jetonlara dokunarak kimya bağlarını ve kartları görebilirsin.</span>
             </div>
           )}
         </div>
       </div>
+
+      {/* Aday seçim popup'ı — seçim zorunlu, dışarı tıklayarak kapanmaz */}
+      {candidates && activeSlotPosition && (
+        <div className="fixed inset-0 z-50 bg-ink/70 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="news-card max-w-3xl w-full p-5 my-6">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="tag-label">
+                {t('draft.pickForSlot', { position: t(`position.${activeSlotPosition}`) })}
+              </span>
+              {hasIconCandidate && (
+                <span className="tag-label bg-gold-foil text-ink border-gold font-bold line-in">
+                  ★ MATBAADAN SON DAKİKA: İKON ÇIKTI!
+                </span>
+              )}
+              <button
+                className={`tag-label ml-auto ${rerollUsed ? 'opacity-40 cursor-not-allowed' : 'hover:bg-ink hover:text-paper cursor-pointer'}`}
+                onClick={rerollCandidates}
+                disabled={rerollUsed}
+                title="Draft başına bir kez: üç adayı yenileriyle değiştirir"
+              >
+                🎲 Yeniden Çevir {rerollUsed ? '(kullanıldı)' : '(1 hak)'}
+              </button>
+            </div>
+            {isFirstPick && <p className="text-sm font-semibold text-vermil mb-2">⭐ {t('draft.firstPickNote')}</p>}
+            <p className="text-xs italic text-ink-faint mb-3">Seçim zorunlu — üç adaydan birini almadan masadan kalkılmaz.</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {candidates.map((c) => (
+                <PlayerCard
+                  key={c.id}
+                  player={c}
+                  onClick={() => pickCandidate(c.id)}
+                  actionLabel={t('draft.choose')}
+                  statBars
+                  chemDelta={chemDeltaOf(c)}
+                  revealIcon
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

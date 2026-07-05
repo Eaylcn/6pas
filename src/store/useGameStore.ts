@@ -75,7 +75,8 @@ interface GameState {
   activeSlotId: string | null;
   activeSlotPosition: Position | null;
   candidates: AnyPlayer[] | null;
-  benchPositionPending: string | null;
+  /** Draft başına tek yeniden çevirme hakkı */
+  rerollUsed: boolean;
 
   // Maç
   opponent: TeamMatchInfo | null;
@@ -101,8 +102,10 @@ interface GameState {
   setPlan: (updates: Partial<TacticalPlan>) => void;
   confirmTactics: () => void;
   openSlot: (slotId: string) => void;
-  chooseBenchPosition: (slotId: string, position: FieldPosition) => void;
+  rerollCandidates: () => void;
   pickCandidate: (playerId: string) => Promise<void>;
+  /** Kadro düzenleme: ilk 6 ↔ yedek takası. Dönen değer: hata veya mevki-dışı uyarısı */
+  swapWithBench: (fieldSlotId: string, benchSlotId: string) => Promise<{ error?: string; warning?: string }>;
   findMatch: () => Promise<void>;
   startMatch: () => void;
 
@@ -125,6 +128,17 @@ interface GameState {
 
 const defaultPlan: TacticalPlan = { whenWinning: 'dengeli', whenDrawing: 'dengeli', whenLosing: 'ofansif' };
 
+/** Mevkisi dışında dizilmiş oyuncu sayısı (GK slotu hariç — oraya zaten sadece GK girebilir) */
+export function outOfPositionCount(squad: SquadSlot[]): number {
+  let count = 0;
+  for (const s of squad) {
+    if (!s.playerId) continue;
+    const p = getPlayer(s.playerId);
+    if (s.position !== 'GK' && p.position !== s.position) count++;
+  }
+  return count;
+}
+
 function playerTeamInfo(run: Run): TeamMatchInfo {
   const players = run.squad.filter((s) => s.playerId).map((s) => getPlayer(s.playerId!));
   const bench = run.bench.filter((b) => b.playerId).map((b) => getPlayer(b.playerId!));
@@ -137,7 +151,7 @@ function playerTeamInfo(run: Run): TeamMatchInfo {
     players,
     bench,
     captainId: run.captainId,
-    chemistry: run.chemistry,
+    chemistry: calculateTeamChemistry(players, run.captainId, outOfPositionCount(run.squad)),
     isGhost: false,
     power: 0,
   };
@@ -172,7 +186,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeSlotId: null,
   activeSlotPosition: null,
   candidates: null,
-  benchPositionPending: null,
+  rerollUsed: false,
 
   opponent: null,
   opponentFound: false,
@@ -207,7 +221,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeSlotId: null,
       activeSlotPosition: null,
       candidates: null,
-      benchPositionPending: null,
+      rerollUsed: false,
       opponent: null,
       opponentFound: false,
       session: null,
@@ -239,15 +253,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   openSlot: (slotId) => {
-    const { squadSlots, benchSlots, captainId } = get();
+    const { squadSlots, benchSlots, captainId, candidates: openCandidates } = get();
+    // Zorunlu seçim: adaylar masadayken başka slota geçilemez (reroll exploit'i kapalı)
+    if (openCandidates) return;
     const squadSlot = squadSlots.find((s) => s.id === slotId);
     const benchSlot = benchSlots.find((b) => b.id === slotId);
     if (squadSlot?.playerId || benchSlot?.playerId) return;
 
-    if (benchSlot && !benchSlot.position) {
-      set({ benchPositionPending: slotId, activeSlotId: null, candidates: null });
-      return;
-    }
     const position = squadSlot?.position ?? benchSlot?.position;
     if (!position) return;
 
@@ -258,15 +270,20 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const rng = createRng(randomSeed());
     const candidates = generateDraftCandidates(rng, position, exclude);
-    set({ activeSlotId: slotId, activeSlotPosition: position, candidates, benchPositionPending: null });
+    set({ activeSlotId: slotId, activeSlotPosition: position, candidates });
   },
 
-  chooseBenchPosition: (slotId, position) => {
-    set((s) => ({
-      benchSlots: s.benchSlots.map((b) => (b.id === slotId ? { ...b, position } : b)),
-      benchPositionPending: null,
-    }));
-    get().openSlot(slotId);
+  /** Draft başına 1 kez: masadaki üç adayı yenileriyle değiştirir */
+  rerollCandidates: () => {
+    const { rerollUsed, candidates, activeSlotPosition, squadSlots, benchSlots, captainId } = get();
+    if (rerollUsed || !candidates || !activeSlotPosition) return;
+    const exclude = new Set<string>();
+    for (const s of squadSlots) if (s.playerId) exclude.add(s.playerId);
+    for (const b of benchSlots) if (b.playerId) exclude.add(b.playerId);
+    if (captainId) exclude.add(captainId);
+    for (const c of candidates) exclude.add(c.id); // eski adaylar geri gelmez
+    const rng = createRng(randomSeed());
+    set({ candidates: generateDraftCandidates(rng, activeSlotPosition, exclude), rerollUsed: true });
   },
 
   pickCandidate: async (playerId) => {
@@ -304,6 +321,40 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
       set({ run, screen: 'squad-review' });
     }
+  },
+
+  swapWithBench: async (fieldSlotId, benchSlotId) => {
+    const { run } = get();
+    if (!run) return { error: 'Aktif kadro yok' };
+    const fieldSlot = run.squad.find((s) => s.id === fieldSlotId);
+    const benchSlot = run.bench.find((b) => b.id === benchSlotId);
+    if (!fieldSlot?.playerId || !benchSlot?.playerId) return { error: 'Slot bulunamadı' };
+
+    const fieldPlayer = getPlayer(fieldSlot.playerId);
+    const benchPlayer = getPlayer(benchSlot.playerId);
+
+    if (fieldPlayer.id === run.captainId) return { error: 'Kaptan kulübeye gönderilemez.' };
+    if (fieldSlot.position === 'GK' && benchPlayer.position !== 'GK')
+      return { error: 'Kaleye yalnızca kaleci geçebilir.' };
+    if (fieldSlot.position !== 'GK' && benchPlayer.position === 'GK')
+      return { error: 'Kaleci saha oyuncusu olarak dizilemez.' };
+
+    const newSquad = run.squad.map((s) => (s.id === fieldSlotId ? { ...s, playerId: benchPlayer.id } : s));
+    const newBench = run.bench.map((b) =>
+      b.id === benchSlotId ? { ...b, playerId: fieldPlayer.id, position: fieldPlayer.position } : b,
+    );
+    const onField = newSquad.filter((s) => s.playerId).map((s) => getPlayer(s.playerId!));
+    const oop = outOfPositionCount(newSquad);
+    const chemistry = calculateTeamChemistry(onField, run.captainId, oop);
+    const updated: Run = { ...run, squad: newSquad, bench: newBench, chemistry };
+    await runService.saveRun(updated);
+    set({ run: updated });
+
+    const warning =
+      benchPlayer.position !== fieldSlot.position
+        ? `‼ ${benchPlayer.name} mevkisi dışında (${benchPlayer.position} → ${fieldSlot.position}). Takım kimyası bundan etkilendi.`
+        : undefined;
+    return { warning };
   },
 
   findMatch: async () => {

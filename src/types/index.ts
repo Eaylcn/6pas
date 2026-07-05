@@ -83,8 +83,8 @@ export interface SquadSlot {
 
 export interface BenchSlot {
   id: string;
-  /** Yedek slotu pozisyonu kullanıcı seçene kadar boş kalabilir (ileride yedek GK için esnek) */
-  position: FieldPosition | null;
+  /** v0.3: 4 yedek — zorunlu 1 GK + 1 DEF + 1 MID + 1 ATK */
+  position: Position | null;
   playerId: string | null;
 }
 
