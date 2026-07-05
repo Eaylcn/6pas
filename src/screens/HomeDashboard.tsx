@@ -1,13 +1,21 @@
+import { useEffect, useState } from 'react';
 import { t } from '../i18n';
 import { SectionHeadline } from '../components/NewspaperShell';
 import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
+import { getClippings, type MatchClipping } from '../services/historyService';
 
 export function HomeDashboard() {
   const user = useUserStore((s) => s.user);
   const run = useGameStore((s) => s.run);
   const goto = useGameStore((s) => s.goto);
   const startNewTeamFlow = useGameStore((s) => s.startNewTeamFlow);
+  const [clippings, setClippings] = useState<MatchClipping[]>([]);
+
+  useEffect(() => {
+    void getClippings().then(setClippings);
+  }, []);
+
   if (!user) return null;
 
   return (
@@ -46,6 +54,25 @@ export function HomeDashboard() {
       <button className="btn-outline w-full" onClick={() => goto('leaderboard')}>
         {t('home.leaderboard')}
       </button>
+
+      {clippings.length > 0 && (
+        <div className="mt-6">
+          <div className="tag-label mb-2">ARŞİVDEN KUPÜRLER</div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {clippings.slice(0, 3).map((c, i) => (
+              <div key={i} className="news-card p-3" style={{ transform: `rotate(${(i % 2 === 0 ? -0.6 : 0.8)}deg)` }}>
+                <div className={`font-headline font-bold text-xs uppercase leading-tight mb-1 ${c.won ? 'text-grass-deep' : 'text-vermil'}`}>
+                  {c.headline}
+                </div>
+                <div className="text-[11px] font-score text-ink-soft">
+                  {c.teamName} <b>{c.score[0]}-{c.score[1]}</b>
+                  {c.penaltyScore ? ` (p ${c.penaltyScore[0]}-${c.penaltyScore[1]})` : ''} {c.opponentName}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

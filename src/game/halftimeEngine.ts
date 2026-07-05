@@ -2,7 +2,8 @@
 import type { AnyPlayer, FieldPlayer, MatchEvent, TeamMatchInfo } from '../types';
 import { isGoalkeeper } from '../types';
 
-export const MAX_SUBSTITUTIONS = 2;
+/** Maç başına toplam değişiklik hakkı (devre arası + maç içi + sakatlık dahil) */
+export const MAX_SUBSTITUTIONS = 3;
 
 export function generateHalfTimeSummary(
   events: MatchEvent[],

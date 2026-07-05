@@ -184,6 +184,22 @@ const perkActionBank: Bank = {
   'hava-fisegi': ['{attacker} ceza sahasında herkesten yükseğe çıktı!'],
   'son-vurus': ['Maçın en sıcak anında top yine {attacker}’de; sorumluluğu aldı!'],
   'ters-top': ['{helper} herkesi ters köşeye yatıran o topu çıkardı!'],
+  'kor-nokta-kosusu': ['{attacker} savunmanın görmediği koridordan sessizce sızdı!'],
+  'ilk-temas': ['{attacker} topla ilk buluşmasında tehlikeyi yarattı!'],
+  'cift-vurus-sezgisi': ['Dönen topa herkesten önce {attacker} ulaştı!'],
+  'ayak-ici-zehri': ['{attacker} ayak içiyle o zehirli vuruşu çıkardı!'],
+  'tempo-hirsizi': ['{helper} oyunu bir yavaşlatıp bir hızlandırdı; savunma ritmi şaştı!'],
+  'kilit-pas': ['{helper} kilitli savunmayı tek pasla açtı!'],
+  'baskidan-cikis': ['{helper} iki adamlık presin içinden topla çıktı!'],
+  'pas-muhendisi': ['{helper} cetvelle çizilmiş bir koridor pası buldu!'],
+  'saha-akli': ['{helper} kimsenin görmediği boşluğu önceden görmüştü!'],
+  'oyunun-nabzi': ['{helper} maçın tam da bu anında oyunu hızlandırdı!'],
+  'dar-alan-ustasi': ['{attacker} kalabalığın ortasında topla yaşadı!'],
+  'onsezi-pasi': ['Koşu daha başlamadan {helper} pası atmıştı bile!'],
+  'sessiz-orkestra': ['Gösterişsiz ama kusursuz: {helper} takımı yine o çalıştırdı.'],
+  'pres-kiran': ['{helper} rakip baskısını tek dokunuşla anlamsızlaştırdı!'],
+  'ara-koridor': ['{helper} savunmayla orta saha arasındaki gri bölgede topu aldı!'],
+  'ikinci-top-avcisi': ['İkinci top yine {helper}’in oldu!'],
 };
 
 // ---- Gerilim satırları ----
@@ -206,6 +222,9 @@ const goalBankNeutral: string[] = [
   'GOOOL! Kalecinin uzandığı yerden içeri! {team} — {score}!',
   'GOOOL! Muhteşem bir bitiriş! Tabela {score} yazıyor!',
   'GOOOL! {attacker} farkını gösterdi! Skor {score}!',
+  'GOOOL! Ağlar havalandı! {team} bulduğu golle {score} önde götürüyor pozisyonun hakkını!',
+  'GOOOL! File bekçisinin yapabileceği bir şey yoktu! {score}!',
+  'GOOOL! {attacker} soğukkanlılığın ders kitabını yazdı! {score}!',
 ];
 
 const goalBankByState: Record<'ahead' | 'tie' | 'behind', string[]> = {
@@ -239,6 +258,8 @@ const saveBank: string[] = [
   '{gk} ayaklarıyla kapattı; top oyun alanı dışına!',
   '{gk} o topu nasıl çıkardıysa... İnanılmaz kurtarış!',
   '{gk} yumruklarıyla tehlikeyi uzaklaştırdı!',
+  '{gk} açıyı erken kapattı; {attacker} vuracak yer bulamadı!',
+  'Ne kurtarış! {gk} takımını maçın içinde tuttu!',
 ];
 
 const perkSaveBank: Bank = {
@@ -248,6 +269,15 @@ const perkSaveBank: Bank = {
   'karsi-karsiya-sogugu': ['{gk} karşı karşıyada gözünü kırpmadı, hamleyi son ana sakladı ve kazandı!'],
   'direk-dibi': ['{gk} yakın direğini kapatmıştı; top eldiveninde kaldı!'],
   'tek-el-mucizesi': ['{gk} tek eliyle o topu çizgiden çıkardı!'],
+  'kale-muhru': ['{gk} bugün kalesine mühür vurmuş; bu top da girmiyor!'],
+  'cizgi-buyucusu': ['{gk} çizgi üzerinde akıl almaz bir kurtarışa imza attı!'],
+  'yumruk-cikisi': ['{gk} yumruğuyla tehlikeyi ceza sahasından söküp attı!'],
+  'panik-yok': ['Baskı büyüktü ama {gk} soğukkanlılığını hiç bozmadı; top kucağında.'],
+  'kontra-fitili': ['{gk} kurtardı ve saniyeler içinde hücumu başlattı!'],
+  'hava-sahasi': ['Ceza sahasındaki yüksek top yine {gk}’nin malı oldu!'],
+  'gozunu-kirpmadi': ['Sert şutta {gk} gözünü bile kırpmadı; top güvenle çelildi!'],
+  'ilk-hamle': ['Karşı karşıyada ilk hamleyi {gk} yaptı ve açıyı yok etti!'],
+  'eldiven-izi': ['{gk} dokundu; değdiği her top gibi bu da kaleden uzaklaştı.'],
 };
 
 const missBank: string[] = [
@@ -257,6 +287,8 @@ const missBank: string[] = [
   'Topu köşeye koyamadı; yandan auta gitti.',
   'Vuruş kontrolsüzdü, top üstten auta çıktı.',
   'Son dokunuş eksik kaldı; top kale sahasından geçip gitti.',
+  'İnanılmaz bir fırsat böyle kaçtı; {attacker} ellerini dizlerine vurdu.',
+  'Top kaleci ile direk arasından çizgiyi bulamadan çıktı!',
 ];
 
 const blockedBank: string[] = [
@@ -273,6 +305,15 @@ const perkBlockBank: Bank = {
   'hava-kilidi': ['{defender} hava topunda yine geçilmedi!'],
   'son-adam': ['Son adam {defender} pozisyonu bitirdi.'],
   'zamaninda-kayis': ['{defender} kusursuz zamanlamayla kaydı, topu aldı.'],
+  'omuz-omuza': ['{defender} omuz omuza mücadelede geri adım atmadı, top onun!'],
+  'alan-kilidi': ['{defender} bölgesini kilitledi; oradan geçiş yok!'],
+  'ters-kademe': ['{defender} arkadaşının arkasını herkesten önce kapattı!'],
+  'sessiz-mudahale': ['{defender} faulsüz, tertemiz bir müdahaleyle topu çaldı.'],
+  'duvar-etkisi': ['{defender} gövdesini duvar gibi koydu; şut ondan döndü!'],
+  'govde-koydu': ['{defender} vücudunu koydu ve pozisyonu öldürdü.'],
+  'koridor-kapatan': ['{defender} iç koridoru kapatıp oyunu dışarı itti.'],
+  'risk-temizligi': ['{defender} riskli topu taşımadı, tehlikeyi anında temizledi.'],
+  'temas-ustasi': ['Omuz temasında top yine {defender}’e kaldı.'],
 };
 
 const cornerBank: string[] = [
@@ -287,6 +328,71 @@ const defendedBank: string[] = [
   '{defender} omuz omuza mücadeleden topla çıktı.',
   'Atak {defender}’in müdahalesiyle kesildi.',
   '{opponent} savunması kademeyi zamanında kurdu.',
+];
+
+// ---- Duran top / kart / sakatlık / değişiklik bankaları ----
+const foulBank: string[] = [
+  "{minute}' {defender} bu kez topu değil adamı buldu. Hakem düdüğü çaldı: faul!",
+  "{minute}' {attacker} hızlanmıştı; {defender} sert bir müdahaleyle durdurdu. Serbest vuruş.",
+  "{minute}' geç kalan {defender} ayağını uzattı, {attacker} yerde. Hakem faulü verdi.",
+  "{minute}' {defender} omuz mücadelesinin dozunu kaçırdı. Oyun durdu.",
+  "{minute}' {attacker} çevik davrandı, {defender} çareyi faulde buldu.",
+];
+
+const yellowCardLines: string[] = [
+  'Hakem kartına davrandı… {defender} sarı kart görüyor.',
+  'Bu müdahalenin bedeli var: {defender} sarı kartla cezalandırıldı.',
+  'Hakem sözlü uyarıyla yetinmedi; {defender} adına sarı kart.',
+];
+
+const secondYellowLines: string[] = [
+  'İkinci sarı… VE KIRMIZI! {defender} oyun dışı! {opponent} 5 kişi kaldı!',
+  'Hakem önce sarıyı, sonra kırmızıyı gösterdi! {defender} maça erken veda ediyor!',
+];
+
+const directRedLines: string[] = [
+  'Son adam pozisyonu! Hakem hiç tereddüt etmedi: DİREKT KIRMIZI! {defender} atıldı!',
+  'Net gol şansını kesti; kural net. {defender} kırmızı kartla oyun dışı!',
+];
+
+const freeKickSetupBank: string[] = [
+  "{minute}' {team} tehlikeli bölgede serbest vuruş kazandı. {attacker} topun başında.",
+  "{minute}' baraj diziliyor… {attacker} topu yerleştirdi, mesafeyi ölçüyor.",
+  "{minute}' bu mesafeden {attacker} için harika bir fırsat. Baraj hazır, hakem düdüğü bekletiyor.",
+];
+
+const freeKickShotBank: string[] = [
+  '{attacker} vurdu! Top barajın üstünden aşıyor…',
+  '{attacker} şutunu çekti; top barajın yanından makaslıyor…',
+  '{attacker} topun altına girdi; falsolu bir vuruş…',
+];
+
+const freeKickWallLines: string[] = [
+  'Baraja takıldı! Savunma bu kez görevini yaptı.',
+  'Top barajdan sekti; tehlike büyümeden atlatıldı.',
+];
+
+const penaltyCallLines: string[] = [
+  "{minute}' ceza sahasında müdahale… Hakem noktayı gösterdi: PENALTI!",
+  "{minute}' {attacker} ceza sahasında devrildi! Hakem hiç düşünmedi: PENALTI!",
+  "{minute}' itirazlar sonuç vermedi; karar net: beyaz nokta!",
+];
+
+const injuryBank: string[] = [
+  '{attacker} yerde kaldı… Sağlık ekibi hemen sahada.',
+  'Oyun durdu; {attacker} acı içinde. Kenar yönetimi endişeli.',
+  '{attacker} devam etmek istedi ama olmuyor. Sedye geliyor.',
+];
+
+const injuryExitLines: string[] = [
+  '{attacker} oyuna devam edemiyor.',
+  'Alkışlar eşliğinde {attacker} sahayı terk ediyor.',
+];
+
+const subBank: string[] = [
+  "{minute}' {team} hamlesini yapıyor: {helper} çıkıyor, {attacker} oyuna giriyor.",
+  "{minute}' kenardan değişiklik geldi. {attacker}, {helper}'in yerine sahada.",
+  "{minute}' {team} taze kan istiyor: {attacker} oyunda, {helper} kulübede.",
 ];
 
 const halftimeBank: string[] = [
@@ -326,6 +432,16 @@ export interface NarrationEngine {
   eventLines(type: MatchEventType, result: EventResult, ctx: NarrationContext): string[];
   halftimeLine(score: string): string;
   finalLine(score: string): string;
+  /** Faul + (varsa) kart satırları */
+  foulLines(ctx: NarrationContext, card: 'yellow' | 'red' | null, secondYellow: boolean): string[];
+  /** Serbest vuruş: hazırlık + şut + gerilim + sonuç */
+  freeKickLines(ctx: NarrationContext, result: EventResult): string[];
+  /** Maç içi penaltı: karar + atış + sonuç */
+  penaltyLines(ctx: NarrationContext, result: EventResult): string[];
+  /** Sakatlık satırları */
+  injuryLines(ctx: NarrationContext): string[];
+  /** Oyuncu değişikliği satırı (helper=çıkan, attacker=giren) */
+  subLines(ctx: NarrationContext): string[];
 }
 
 export function createNarrationEngine(rng: Rng): NarrationEngine {
@@ -383,6 +499,9 @@ export function createNarrationEngine(rng: Rng): NarrationEngine {
         return [fill(pickFresh(rng, cornerBank, used), ctx)];
       case 'defended':
         return [fill(pickFresh(rng, defendedBank, used), ctx)];
+      default:
+        // Meta sonuçlar (faul/sakatlık/değişiklik) kendi satır üreticilerini kullanır
+        return [];
     }
   }
 
@@ -404,6 +523,48 @@ export function createNarrationEngine(rng: Rng): NarrationEngine {
     },
     finalLine(score) {
       return pickFresh(rng, finalBank, used).replaceAll('{score}', score);
+    },
+
+    foulLines(ctx, card, secondYellow) {
+      const lines = [fill(pickFresh(rng, foulBank, used), ctx)];
+      if (card === 'yellow') {
+        lines.push(fill(pickFresh(rng, yellowCardLines, used), ctx));
+      } else if (card === 'red') {
+        lines.push(fill(pickFresh(rng, secondYellow ? secondYellowLines : directRedLines, used), ctx));
+      }
+      return lines;
+    },
+
+    freeKickLines(ctx, result) {
+      const lines = [
+        fill(pickFresh(rng, freeKickSetupBank, used), ctx),
+        fill(pickFresh(rng, freeKickShotBank, used), ctx),
+      ];
+      if (result === 'blocked') {
+        lines.push(fill(pickFresh(rng, freeKickWallLines, used), ctx));
+        return lines;
+      }
+      lines.push(fill(pickFresh(rng, suspenseBank.close, used), ctx));
+      lines.push(...resultLines('serbest-vurus', result, ctx));
+      return lines;
+    },
+
+    penaltyLines(ctx, result) {
+      const lines = [
+        fill(pickFresh(rng, penaltyCallLines, used), ctx),
+        fill(`{attacker} topu noktaya dikti… Kaleci {gk} çizgide bekliyor.`, ctx),
+        fill(pickFresh(rng, suspenseBank.close, used), ctx),
+      ];
+      lines.push(...resultLines('penalti', result, ctx));
+      return lines;
+    },
+
+    injuryLines(ctx) {
+      return [fill(pickFresh(rng, injuryBank, used), ctx), fill(pickFresh(rng, injuryExitLines, used), ctx)];
+    },
+
+    subLines(ctx) {
+      return [fill(pickFresh(rng, subBank, used), ctx)];
     },
   };
 }

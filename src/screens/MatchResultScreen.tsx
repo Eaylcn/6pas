@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { t } from '../i18n';
-import { SectionHeadline } from '../components/NewspaperShell';
+import { buildMatchReport, type TeamMatchStats } from '../game/matchReport';
 import { useGameStore } from '../store/useGameStore';
 
 export function MatchResultScreen() {
@@ -8,40 +9,141 @@ export function MatchResultScreen() {
     finalScore,
     penaltyScore,
     playerWon,
-    playerDraw,
     rewards,
-    manOfTheMatch,
-    criticalMoment,
     afterResult,
     startNewTeamFlow,
     run,
   } = useGameStore();
-  if (!session || !finalScore) return null;
 
-  const headline = playerWon ? t('result.winHeadline') : playerDraw ? t('result.drawHeadline') : t('result.lossHeadline');
+  const report = useMemo(() => {
+    if (!session || !finalScore) return null;
+    return buildMatchReport({
+      events: session.events,
+      home: session.sim.home.info,
+      away: session.sim.away.info,
+      finalScore,
+      penalties: session.penalties,
+      won: playerWon,
+      streak: rewards?.newStreak ?? 0,
+    });
+  }, [session, finalScore, playerWon, rewards]);
+
+  if (!session || !finalScore || !report) return null;
+  const home = session.sim.home.info;
+  const away = session.sim.away.info;
 
   return (
-    <div className="max-w-xl mx-auto">
-      <div className="text-center mb-6">
-        <h2 className={`font-headline font-black text-5xl sm:text-6xl uppercase ${playerWon ? 'text-grass-deep' : playerDraw ? 'text-ink' : 'text-vermil'}`}>
-          {headline}
+    <div className="max-w-2xl mx-auto">
+      {/* Manşet */}
+      <div className="text-center mb-5">
+        <div className="text-[10px] font-score uppercase tracking-[0.35em] text-ink-soft mb-2">
+          — MAÇ SONU ÖZEL BASKISI —
+        </div>
+        <h2
+          className={`font-headline font-black text-4xl sm:text-6xl uppercase leading-tight ${
+            playerWon ? 'text-grass-deep' : 'text-vermil'
+          }`}
+          style={{ textWrap: 'balance' as never }}
+        >
+          {report.headline}
         </h2>
-        <div className="rule-double mt-3 py-2">
-          <span className="font-headline font-bold text-lg">{session.home.info.teamName}</span>
-          <span className="scoreboard-digit text-2xl mx-2">{finalScore[0]}</span>
-          <span className="font-score text-ink-soft">—</span>
-          <span className="scoreboard-digit text-2xl mx-2">{finalScore[1]}</span>
-          <span className="font-headline font-bold text-lg">{session.away.info.teamName}</span>
+        <p className="text-sm italic text-ink-soft mt-2 max-w-lg mx-auto">{report.subhead}</p>
+      </div>
+
+      {/* Skor kutusu */}
+      <div className="rule-double py-3 text-center mb-5">
+        <span className="font-headline font-bold text-lg">{home.teamName}</span>
+        <span className="scoreboard-digit text-3xl mx-2">{finalScore[0]}</span>
+        <span className="font-score text-ink-soft">—</span>
+        <span className="scoreboard-digit text-3xl mx-2">{finalScore[1]}</span>
+        <span className="font-headline font-bold text-lg">{away.teamName}</span>
+        <div className="text-[11px] font-score uppercase tracking-widest text-ink-soft mt-1.5">
+          İlk Yarı: {report.halfScore[0]} - {report.halfScore[1]}
           {penaltyScore && (
-            <div className="text-sm font-score uppercase tracking-widest text-ink-soft mt-1.5">
+            <>
+              {' · '}
               {t('result.penalties')}: {penaltyScore[0]} - {penaltyScore[1]}
-            </div>
+            </>
           )}
         </div>
       </div>
 
+      {/* Goller + kartlar */}
+      {(report.goals.length > 0 || report.cards.length > 0) && (
+        <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
+          <div className="text-right space-y-0.5">
+            {report.goals
+              .filter((g) => g.side === 'home')
+              .map((g, i) => (
+                <div key={i}>
+                  {g.scorer} {g.minute}' {g.setPiece === 'pen' ? '(P)' : g.setPiece === 'fk' ? '(SV)' : ''} ⚽
+                </div>
+              ))}
+            {report.cards
+              .filter((c) => c.side === 'home')
+              .map((c, i) => (
+                <div key={`c${i}`} className="text-ink-soft text-xs">
+                  {c.player} {c.minute}' {c.card === 'red' ? '🟥' : '🟨'}
+                </div>
+              ))}
+          </div>
+          <div className="space-y-0.5">
+            {report.goals
+              .filter((g) => g.side === 'away')
+              .map((g, i) => (
+                <div key={i}>
+                  ⚽ {g.minute}' {g.scorer} {g.setPiece === 'pen' ? '(P)' : g.setPiece === 'fk' ? '(SV)' : ''}
+                </div>
+              ))}
+            {report.cards
+              .filter((c) => c.side === 'away')
+              .map((c, i) => (
+                <div key={`c${i}`} className="text-ink-soft text-xs">
+                  {c.card === 'red' ? '🟥' : '🟨'} {c.minute}' {c.player}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* İstatistik karşılaştırması */}
+      <div className="news-card p-4 mb-4">
+        <div className="tag-label mb-3">MAÇIN RÖNTGENİ</div>
+        <StatRow label="Önemli An" a={report.stats.home.chances} b={report.stats.away.chances} />
+        <StatRow label="Şut" a={report.stats.home.shots} b={report.stats.away.shots} />
+        <StatRow label="İsabetli Şut" a={report.stats.home.onTarget} b={report.stats.away.onTarget} />
+        <StatRow label="Kurtarış" a={report.stats.home.saves} b={report.stats.away.saves} />
+        <StatRow label="Korner" a={report.stats.home.corners} b={report.stats.away.corners} />
+        <StatRow label="Faul" a={report.stats.home.fouls} b={report.stats.away.fouls} />
+        <StatRow label="Kimya" a={home.chemistry.score} b={away.chemistry.score} max={100} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3 mb-4">
+        {report.motm && (
+          <div className="news-card p-4">
+            <div className="tag-label mb-1">{t('result.manOfTheMatch')}</div>
+            <p className="font-headline font-bold text-lg">{report.motm.name}</p>
+            <p className="text-xs text-ink-soft italic">({report.motm.reason})</p>
+          </div>
+        )}
+        {(report.cards.length > 0 || report.stats.home.fouls + report.stats.away.fouls > 0) && (
+          <div className="news-card p-4">
+            <div className="tag-label mb-1">HAKEM KARNESİ</div>
+            <p className="text-sm">
+              {report.stats.home.fouls + report.stats.away.fouls} faul ·{' '}
+              {report.cards.filter((c) => c.card === 'yellow').length} sarı ·{' '}
+              {report.cards.filter((c) => c.card === 'red').length} kırmızı
+            </p>
+            {session.penalties === null && report.goals.some((g) => g.setPiece === 'pen') && (
+              <p className="text-xs text-ink-soft italic mt-1">Penaltı kararı maça damga vurdu.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Puan dökümü */}
       {rewards && rewards.total > 0 && (
-        <div className="news-card p-4 mb-4">
+        <div className="news-card p-4 mb-5">
           <div className="flex items-baseline justify-between mb-2">
             <span className="tag-label">{t('result.pointsEarned')}</span>
             <span className="scoreboard-digit text-2xl">+{rewards.total}</span>
@@ -55,45 +157,50 @@ export function MatchResultScreen() {
             ))}
           </ul>
           <p className="text-xs font-score uppercase tracking-widest text-ink-soft mt-2">
-            {t('common.streak')}: {rewards.newStreak}
+            {t('common.streak')}: {rewards.newStreak} {rewards.newStreak >= 2 ? '🔥' : ''}
           </p>
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-3 mb-5">
-        {manOfTheMatch && (
-          <div className="news-card p-4">
-            <div className="tag-label mb-1">{t('result.manOfTheMatch')}</div>
-            <p className="font-headline font-bold text-lg">{manOfTheMatch}</p>
-          </div>
-        )}
-        {criticalMoment && (
-          <div className="news-card p-4">
-            <div className="tag-label mb-1">{t('result.criticalMoment')}</div>
-            <p className="text-sm italic leading-snug">“{criticalMoment}”</p>
-          </div>
-        )}
-      </div>
+      {!playerWon && <p className="text-sm italic text-vermil text-center mb-4">{t('result.runOver')}</p>}
 
-      {playerDraw && <p className="text-sm italic text-ink-soft text-center mb-4">{t('result.drawNote')}</p>}
-      {!playerWon && !playerDraw && (
-        <p className="text-sm italic text-vermil text-center mb-4">{t('result.runOver')}</p>
-      )}
-
-      {playerWon || playerDraw ? (
+      {playerWon ? (
         <button className="btn-press w-full text-lg" onClick={afterResult}>
           {t('result.playAgain')}
         </button>
       ) : (
-        <button className="btn-press w-full text-lg" onClick={startNewTeamFlow}>
-          {t('result.newRun')}
-        </button>
+        <>
+          <button className="btn-press w-full text-lg" onClick={startNewTeamFlow}>
+            {t('result.newRun')}
+          </button>
+          {run == null && (
+            <button className="btn-outline w-full mt-3" onClick={afterResult}>
+              {t('common.back')}
+            </button>
+          )}
+        </>
       )}
-      {run == null && !playerWon && !playerDraw && (
-        <button className="btn-outline w-full mt-3" onClick={afterResult}>
-          {t('common.back')}
-        </button>
-      )}
+    </div>
+  );
+}
+
+function StatRow({ label, a, b, max }: { label: string; a: number; b: number; max?: number }) {
+  const total = max ?? Math.max(1, a + b);
+  const aPct = max ? (a / max) * 100 : (a / total) * 100;
+  const bPct = max ? (b / max) * 100 : (b / total) * 100;
+  return (
+    <div className="flex items-center gap-2 py-1 text-sm">
+      <span className="font-score font-bold w-6 text-right">{a}</span>
+      <div className="flex-1 flex gap-0.5 h-2">
+        <div className="flex-1 bg-paper-deep border border-ink/20 relative overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 bg-grass" style={{ width: `${aPct}%` }} />
+        </div>
+        <div className="flex-1 bg-paper-deep border border-ink/20 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 bg-vermil/70" style={{ width: `${bPct}%` }} />
+        </div>
+      </div>
+      <span className="font-score font-bold w-6">{b}</span>
+      <span className="text-[10px] font-score uppercase tracking-wider text-ink-faint w-20">{label}</span>
     </div>
   );
 }

@@ -22,8 +22,8 @@ export function HalfTimeScreen() {
   const [error, setError] = useState<string | null>(null);
   if (!session || !run) return null;
 
-  const me = session.home.info;
-  const subsLeft = MAX_SUBSTITUTIONS - session.subsUsed;
+  const me = session.sim.home.info;
+  const subsLeft = MAX_SUBSTITUTIONS - session.sim.home.subsUsed;
 
   const pitchSlots: PitchSlotView[] = me.players.map((p) => ({ id: p.id, position: p.position, player: p }));
   const pitchBench: PitchSlotView[] = me.bench.map((p) => ({ id: p.id, position: p.position, player: p }));
@@ -69,7 +69,7 @@ export function HalfTimeScreen() {
   return (
     <div className="max-w-3xl mx-auto">
       <SectionHeadline
-        sub={`${session.home.info.teamName} ${session.home.goals} - ${session.away.goals} ${session.away.info.teamName}`}
+        sub={`${session.sim.home.info.teamName} ${session.sim.home.goals} - ${session.sim.away.goals} ${session.sim.away.info.teamName}`}
       >
         {t('halftime.headline')}
       </SectionHeadline>

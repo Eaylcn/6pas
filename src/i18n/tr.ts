@@ -133,6 +133,12 @@ export const tr = {
     skipHalf: 'Yarıyı İleri Sar',
     liveColumn: 'CANLI MAÇ SÜTUNU',
     reporter: 'Saha kenarından bildiriyor',
+    sideline: 'Kenara Talimat',
+    sidelineNote: 'Oyuncu değişikliği ve taktik ayarı — maç kaldığı yerden yeni düzenle devam eder.',
+    tacticLimitLeft: 'Kalan maç içi taktik hakkı: {count}',
+    momentum: 'Baskı',
+    applyStyle: 'Tarzı Uygula',
+    close: 'Kapat',
   },
   halftime: {
     headline: 'DEVRE ARASI',

@@ -150,9 +150,24 @@ export type MatchEventType =
   | 'blok'
   | 'cizgiden'
   | 'kurtaris'
-  | 'son-dakika';
+  | 'son-dakika'
+  // Duran toplar ve meta olaylar
+  | 'serbest-vurus'
+  | 'penalti'
+  | 'faul'
+  | 'sakatlik'
+  | 'degisiklik';
 
-export type EventResult = 'goal' | 'save' | 'miss' | 'blocked' | 'corner-won' | 'defended';
+export type EventResult =
+  | 'goal'
+  | 'save'
+  | 'miss'
+  | 'blocked'
+  | 'corner-won'
+  | 'defended'
+  | 'foul'
+  | 'injury'
+  | 'substitution';
 
 export interface TeamMatchInfo {
   runId?: string;
@@ -185,6 +200,14 @@ export interface MatchEvent {
   textLines: string[];
   result: EventResult;
   scoreAfterEvent: [number, number];
+  // Meta olay alanları (kart / sakatlık / değişiklik / duran top)
+  card?: 'yellow' | 'red';
+  cardPlayerId?: string;
+  injuryPlayerId?: string;
+  subOutId?: string;
+  subInId?: string;
+  /** Gol duran toptan mu geldi (P: penaltı, SV: serbest vuruş) */
+  setPiece?: 'pen' | 'fk';
 }
 
 export interface HalftimeState {

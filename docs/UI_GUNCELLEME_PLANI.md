@@ -4,7 +4,7 @@
 > detaylı maç sonu, anlatım bankası genişletme, Gece Baskısı (koyu tema) ve
 > **maç olayları genişletmesi** (duran toplar, penaltılar, kartlar, sakatlıklar,
 > otomatik + maç içi oyuncu değişiklikleri).
-> Durum: **Onay bekliyor** — onay sonrası kodlamaya geçilecek.
+> Durum: ✅ **Tamamlandı** (v0.2) — tüm fazlar uygulandı, 1000 maçlık simülasyonla yeniden kalibre edildi, iki temada uçtan uca test edildi.
 
 ---
 

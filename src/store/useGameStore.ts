@@ -5,6 +5,7 @@ import type {
   FieldPosition,
   MatchEvent,
   MatchRewards,
+  PenaltyShootoutResult,
   PlayStyle,
   Position,
   Run,
@@ -14,7 +15,7 @@ import type {
   TeamMatchInfo,
 } from '../types';
 import { getFormation, getPlayer, teamNamePool } from '../data';
-import { createRng, randomSeed, type Rng } from '../utils/random';
+import { createRng, randomSeed } from '../utils/random';
 import {
   assignCaptainIfFirstPick,
   buildBenchSlots,
@@ -25,42 +26,37 @@ import {
 import { calculateTeamChemistry } from '../game/chemistryEngine';
 import {
   calculateTeamPower,
-  createNarrationEngine,
-  generateExtraTimeEvents,
-  generateMatchEvents,
+  createMatchSim,
+  performSub,
   pickCriticalMoment,
   pickManOfTheMatch,
+  planPhaseMinutes,
+  produceEvent,
   simulatePenaltyShootout,
-  type SimTeamState,
+  type MatchSim,
 } from '../game/matchEngine';
-import type { PenaltyShootoutResult } from '../types';
-import type { NarrationEngine } from '../game/narrationEngine';
-import { generateHalfTimeSummary, applySubstitution, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
+import { generateHalfTimeSummary, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { calculateRunPoints } from '../game/scoringEngine';
+import { buildMatchReport } from '../game/matchReport';
 import * as runService from '../services/runService';
 import * as matchmakingService from '../services/matchmakingService';
+import * as historyService from '../services/historyService';
 import { useUserStore } from './useUserStore';
-
-// ---- Maç oturumu (serileştirilmez; sayfa yenilenirse maç düşer, run korunur) ----
-interface MatchSession {
-  rng: Rng;
-  narration: NarrationEngine;
-  home: SimTeamState;
-  away: SimTeamState;
-  firstHalfEvents: MatchEvent[];
-  secondHalfEvents: MatchEvent[] | null;
-  extraTimeEvents: MatchEvent[] | null;
-  penalties: PenaltyShootoutResult | null;
-  subsUsed: number;
-}
 
 export type MatchPhase = 'H1' | 'H2' | 'ET' | 'PENS';
 
-export function phaseOf(session: MatchSession): MatchPhase {
-  if (session.penalties) return 'PENS';
-  if (session.extraTimeEvents) return 'ET';
-  if (session.secondHalfEvents) return 'H2';
-  return 'H1';
+/** Maç içi taktik değişikliği üst sınırı (devre arası hariç) */
+export const MAX_INMATCH_TACTIC_CHANGES = 2;
+
+// Maç oturumu — serileştirilmez; sayfa yenilenirse maç düşer, run korunur
+export interface MatchSession {
+  sim: MatchSim;
+  phase: MatchPhase;
+  plannedMinutes: number[];
+  events: MatchEvent[]; // tüm fazlar, üretim sırasıyla
+  penalties: PenaltyShootoutResult | null;
+  revealCursor: number; // ekranda açılmış satır sayısı (global)
+  inMatchTacticChanges: number;
 }
 
 interface GameState {
@@ -79,7 +75,7 @@ interface GameState {
   activeSlotId: string | null;
   activeSlotPosition: Position | null;
   candidates: AnyPlayer[] | null;
-  benchPositionPending: string | null; // pozisyon seçimi bekleyen yedek slotu
+  benchPositionPending: string | null;
 
   // Maç
   opponent: TeamMatchInfo | null;
@@ -109,13 +105,20 @@ interface GameState {
   pickCandidate: (playerId: string) => Promise<void>;
   findMatch: () => Promise<void>;
   startMatch: () => void;
-  reachHalftime: () => void;
+
+  // Maç akışı (streaming)
+  advanceReveal: () => void;
+  revealAllPhase: () => void;
+  produceNext: () => void;
+  endPhase: () => Promise<void>;
+  startSecondHalf: () => void;
+
+  // Müdahaleler
   halftimeSetPlayStyle: (style: PlayStyle) => void;
   halftimeSetPlan: (updates: Partial<TacticalPlan>) => void;
   makeSubstitution: (outId: string, inId: string) => string | null;
-  startSecondHalf: () => void;
-  afterSecondHalf: () => Promise<void>;
-  afterExtraTime: () => Promise<void>;
+  sidelineTacticChange: (style: PlayStyle | null, plan: Partial<TacticalPlan> | null) => string | null;
+
   finishMatch: () => Promise<void>;
   afterResult: () => Promise<void>;
 }
@@ -140,6 +143,18 @@ function playerTeamInfo(run: Run): TeamMatchInfo {
   };
   info.power = calculateTeamPower(info);
   return info;
+}
+
+/** Faz → simülasyon yarısı */
+function halfOf(phase: MatchPhase): 1 | 2 {
+  return phase === 'H1' ? 1 : 2;
+}
+
+/** Fazın toplam satır sayısı (event satırları + penaltı satırları) */
+export function totalLines(session: MatchSession): number {
+  const eventLines = session.events.reduce((sum, e) => sum + e.textLines.length, 0);
+  const penLines = session.penalties ? session.penalties.lines.length : 0;
+  return eventLines + penLines;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -227,7 +242,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { squadSlots, benchSlots, captainId } = get();
     const squadSlot = squadSlots.find((s) => s.id === slotId);
     const benchSlot = benchSlots.find((b) => b.id === slotId);
-    if (squadSlot?.playerId || benchSlot?.playerId) return; // dolu slot
+    if (squadSlot?.playerId || benchSlot?.playerId) return;
 
     if (benchSlot && !benchSlot.position) {
       set({ benchPositionPending: slotId, activeSlotId: null, candidates: null });
@@ -304,21 +319,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { run, opponent } = get();
     if (!run || !opponent) return;
     const rng = createRng(randomSeed());
-    const narration = createNarrationEngine(rng);
-    const home: SimTeamState = { info: playerTeamInfo(run), goals: 0, acrobaticsUsed: 0 };
-    const away: SimTeamState = { info: opponent, goals: 0, acrobaticsUsed: 0 };
-    const firstHalfEvents = generateMatchEvents({ home, away, rng, narration }, 1);
+    const sim = createMatchSim(playerTeamInfo(run), opponent, rng);
     set({
       session: {
-        rng,
-        narration,
-        home,
-        away,
-        firstHalfEvents,
-        secondHalfEvents: null,
-        extraTimeEvents: null,
+        sim,
+        phase: 'H1',
+        plannedMinutes: planPhaseMinutes(rng, 'H1'),
+        events: [],
         penalties: null,
-        subsUsed: 0,
+        revealCursor: 0,
+        inMatchTacticChanges: 0,
       },
       screen: 'match',
       rewards: null,
@@ -328,95 +338,137 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  reachHalftime: () => {
+  advanceReveal: () => {
     const session = get().session;
     if (!session) return;
-    const score: [number, number] = [session.home.goals, session.away.goals];
-    const summary = generateHalfTimeSummary(session.firstHalfEvents, session.home.info, session.away.info, score);
-    set({ halftimeSummary: summary, screen: 'half-time' });
+    if (session.revealCursor < totalLines(session)) {
+      set({ session: { ...session, revealCursor: session.revealCursor + 1 } });
+    }
+  },
+
+  revealAllPhase: () => {
+    const session = get().session;
+    if (!session) return;
+    // Kalan tüm dakikaları üret, ardından imleç sona alınır
+    let s = session;
+    while (s.plannedMinutes.length > 0) {
+      const [minute, ...rest] = s.plannedMinutes;
+      const evts = produceEvent(s.sim, minute, halfOf(s.phase));
+      s = { ...s, plannedMinutes: rest, events: [...s.events, ...evts] };
+    }
+    s = { ...s, revealCursor: totalLines(s) };
+    set({ session: s });
+  },
+
+  produceNext: () => {
+    const session = get().session;
+    if (!session || session.plannedMinutes.length === 0) return;
+    const [minute, ...rest] = session.plannedMinutes;
+    const evts = produceEvent(session.sim, minute, halfOf(session.phase));
+    set({ session: { ...session, plannedMinutes: rest, events: [...session.events, ...evts] } });
+  },
+
+  endPhase: async () => {
+    const session = get().session;
+    if (!session) return;
+    const { sim } = session;
+    const tied = sim.home.goals === sim.away.goals;
+
+    switch (session.phase) {
+      case 'H1': {
+        const h1Events = session.events.filter((e) => e.half === 1);
+        const score: [number, number] = [sim.home.goals, sim.away.goals];
+        const summary = generateHalfTimeSummary(h1Events, sim.home.info, sim.away.info, score);
+        set({ halftimeSummary: summary, screen: 'half-time' });
+        return;
+      }
+      case 'H2': {
+        if (!tied) {
+          await get().finishMatch();
+          return;
+        }
+        set({
+          session: { ...session, phase: 'ET', plannedMinutes: planPhaseMinutes(sim.rng, 'ET') },
+        });
+        return;
+      }
+      case 'ET': {
+        if (!tied) {
+          await get().finishMatch();
+          return;
+        }
+        const penalties = simulatePenaltyShootout(sim.rng, sim.home.info, sim.away.info);
+        set({ session: { ...session, phase: 'PENS', penalties } });
+        return;
+      }
+      case 'PENS':
+        await get().finishMatch();
+    }
+  },
+
+  startSecondHalf: () => {
+    const session = get().session;
+    if (!session) return;
+    set({
+      session: { ...session, phase: 'H2', plannedMinutes: planPhaseMinutes(session.sim.rng, 'H2') },
+      screen: 'match',
+    });
   },
 
   halftimeSetPlayStyle: (style) => {
     const { session, run } = get();
     if (!session || !run) return;
-    session.home.info.defaultPlayStyle = style;
+    session.sim.home.info.defaultPlayStyle = style;
     set({ run: { ...run, defaultPlayStyle: style } });
   },
 
   halftimeSetPlan: (updates) => {
     const { session, run } = get();
     if (!session || !run) return;
-    const newPlan = { ...session.home.info.tacticalPlan, ...updates };
-    session.home.info.tacticalPlan = newPlan;
+    const newPlan = { ...session.sim.home.info.tacticalPlan, ...updates };
+    session.sim.home.info.tacticalPlan = newPlan;
     set({ run: { ...run, tacticalPlan: newPlan } });
   },
 
   makeSubstitution: (outId, inId) => {
     const { session } = get();
     if (!session) return 'Aktif maç yok';
-    const check = validateSubstitution(session.home.info, outId, inId, session.subsUsed);
+    const home = session.sim.home;
+    const check = validateSubstitution(home.info, outId, inId, home.subsUsed);
     if (!check.ok) return check.reason ?? 'Değişiklik yapılamadı';
-    const { players, bench } = applySubstitution(session.home.info, outId, inId);
-    session.home.info.players = players;
-    session.home.info.bench = bench;
-    // Kimya sahadaki 6 üzerinden yeniden hesaplanır
-    session.home.info.chemistry = calculateTeamChemistry(players, session.home.info.captainId);
-    session.subsUsed += 1;
+    performSub(home, outId, inId);
     set({ session: { ...session } });
     return null;
   },
 
-  startSecondHalf: () => {
-    const session = get().session;
-    if (!session) return;
-    const events = generateMatchEvents(
-      { home: session.home, away: session.away, rng: session.rng, narration: session.narration },
-      2,
-    );
-    set({ session: { ...session, secondHalfEvents: events }, screen: 'match' });
-  },
-
-  // 60' sonunda eşitlik varsa uzatma oynanır — maç berabere bitmez
-  afterSecondHalf: async () => {
-    const session = get().session;
-    if (!session) return;
-    if (session.home.goals !== session.away.goals) {
-      await get().finishMatch();
-      return;
+  /** Maç içi "Kenara Talimat": stil/plan değişikliği (limitli) */
+  sidelineTacticChange: (style, plan) => {
+    const { session, run } = get();
+    if (!session || !run) return 'Aktif maç yok';
+    if (session.inMatchTacticChanges >= MAX_INMATCH_TACTIC_CHANGES) {
+      return 'Maç içi taktik değişikliği hakkın doldu.';
     }
-    const events = generateExtraTimeEvents({
-      home: session.home,
-      away: session.away,
-      rng: session.rng,
-      narration: session.narration,
+    if (style) session.sim.home.info.defaultPlayStyle = style;
+    if (plan) {
+      session.sim.home.info.tacticalPlan = { ...session.sim.home.info.tacticalPlan, ...plan };
+    }
+    set({
+      session: { ...session, inMatchTacticChanges: session.inMatchTacticChanges + 1 },
+      run: {
+        ...run,
+        defaultPlayStyle: session.sim.home.info.defaultPlayStyle,
+        tacticalPlan: session.sim.home.info.tacticalPlan,
+      },
     });
-    set({ session: { ...session, extraTimeEvents: events } });
-  },
-
-  // Uzatma da eşit biterse seri penaltılar
-  afterExtraTime: async () => {
-    const session = get().session;
-    if (!session) return;
-    if (session.home.goals !== session.away.goals) {
-      await get().finishMatch();
-      return;
-    }
-    const penalties = simulatePenaltyShootout(session.rng, session.home.info, session.away.info);
-    set({ session: { ...session, penalties } });
+    return null;
   },
 
   finishMatch: async () => {
     const { session, run } = get();
-    if (!session || !run || !session.secondHalfEvents) return;
-    const events = [
-      ...session.firstHalfEvents,
-      ...session.secondHalfEvents,
-      ...(session.extraTimeEvents ?? []),
-    ];
-    const finalScore: [number, number] = [session.home.goals, session.away.goals];
-    const pens = session.penalties;
-    // Beraberlik yok: eşitlik uzatma + penaltılarla mutlaka çözülür
-    const won = finalScore[0] > finalScore[1] || (finalScore[0] === finalScore[1] && pens?.winner === 'home');
+    if (!session || !run) return;
+    const { sim, events, penalties } = session;
+    const finalScore: [number, number] = [sim.home.goals, sim.away.goals];
+    const won = finalScore[0] > finalScore[1] || (finalScore[0] === finalScore[1] && penalties?.winner === 'home');
 
     const rewards = calculateRunPoints({
       won,
@@ -424,9 +476,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       myGoals: finalScore[0],
       opponentGoals: finalScore[1],
       streakBeforeMatch: run.streak,
-      myPower: session.home.info.power,
-      opponentPower: session.away.info.power,
-      opponent: session.away.info,
+      myPower: sim.home.info.power,
+      opponentPower: sim.away.info.power,
+      opponent: sim.away.info,
     });
 
     const updatedRun: Run = won
@@ -441,26 +493,47 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeRunId: won ? updatedRun.id : null,
     });
 
+    // Kupür arşivine kaydet (Ana sayfa vitrini)
+    const report = buildMatchReport({
+      events,
+      home: sim.home.info,
+      away: sim.away.info,
+      finalScore,
+      penalties,
+      won,
+      streak: rewards.newStreak,
+    });
+    await historyService.addClipping({
+      teamName: sim.home.info.teamName,
+      opponentName: sim.away.info.teamName,
+      score: finalScore,
+      penaltyScore: penalties ? [penalties.homeGoals, penalties.awayGoals] : null,
+      won,
+      headline: report.headline,
+      playedAt: Date.now(),
+    });
+
     set({
       run: won ? updatedRun : null,
       rewards,
       finalScore,
-      penaltyScore: pens ? [pens.homeGoals, pens.awayGoals] : null,
+      penaltyScore: penalties ? [penalties.homeGoals, penalties.awayGoals] : null,
       playerWon: won,
       playerDraw: false,
-      manOfTheMatch: pickManOfTheMatch(events, session.home.info, session.away.info),
-      criticalMoment: pens ? pens.lines[pens.lines.length - 1].text : pickCriticalMoment(events),
+      manOfTheMatch: pickManOfTheMatch(events, sim.home.info, sim.away.info),
+      criticalMoment: penalties ? penalties.lines[penalties.lines.length - 1].text : pickCriticalMoment(events),
       screen: 'match-result',
     });
   },
 
   afterResult: async () => {
-    const { playerWon, playerDraw } = get();
-    if (playerWon || playerDraw) {
-      set({ screen: 'squad-review', session: null, opponent: null, opponentFound: false });
-    } else {
-      set({ screen: 'home', session: null, opponent: null, opponentFound: false });
-    }
+    const { playerWon } = get();
+    set({
+      screen: playerWon ? 'squad-review' : 'home',
+      session: null,
+      opponent: null,
+      opponentFound: false,
+    });
   },
 }));
 
