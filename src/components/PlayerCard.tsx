@@ -1,6 +1,6 @@
 import type { AnyPlayer } from '../types';
 import { isGoalkeeper } from '../types';
-import { getClubName, getLeagueName } from '../data';
+import { getClubName, getLeagueName, getPerk } from '../data';
 import { t } from '../i18n';
 import { CaptainBadge, IconBadge, PerkBadge, RarityBadge, rarityColor } from './Badges';
 
@@ -16,6 +16,8 @@ interface Props {
   chemDelta?: number | null;
   /** İkon kart açılış parlaması */
   revealIcon?: boolean;
+  /** Detay görünümü: perk açıklamaları listelenir (inceleme panelleri) */
+  detailed?: boolean;
 }
 
 /** Stat kısaltmalarının açıklamaları (dokun/üzerine gel) */
@@ -37,6 +39,7 @@ export function PlayerCard({
   statBars,
   chemDelta,
   revealIcon,
+  detailed,
 }: Props) {
   const stats = isGoalkeeper(player)
     ? [
@@ -78,6 +81,7 @@ export function PlayerCard({
           <h3 className="font-headline font-bold text-lg leading-tight mt-0.5">{player.name}</h3>
           <div className="text-xs text-ink-soft font-score uppercase tracking-wider">
             {t(`position.${player.position}`)} · {player.nationality}
+            {player.age ? ` · ${player.age} yaş` : ''}
           </div>
         </div>
         <div className="text-center shrink-0">
@@ -116,13 +120,27 @@ export function PlayerCard({
             {getClubName(player.club)} — {getLeagueName(player.league)}
           </div>
 
-          {player.perks.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {player.perks.map((id) => (
-                <PerkBadge key={id} perkId={id} />
-              ))}
-            </div>
-          )}
+          {player.perks.length > 0 &&
+            (detailed ? (
+              <div className="space-y-1 rule-top pt-1.5">
+                {player.perks.map((id) => {
+                  const perk = getPerk(id);
+                  if (!perk) return null;
+                  return (
+                    <div key={id} className="text-xs">
+                      <span className="font-headline font-bold">{perk.name}</span>
+                      <span className="text-ink-soft"> — {perk.description}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {player.perks.map((id) => (
+                  <PerkBadge key={id} perkId={id} />
+                ))}
+              </div>
+            ))}
 
           <p className="text-xs italic text-ink-faint leading-snug">“{player.flavorText}”</p>
           {isCaptain && player.captainTrait && (

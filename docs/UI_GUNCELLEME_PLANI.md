@@ -205,6 +205,22 @@ Basit bir **menajer beyni** (`autoSubEngine`) her iki takım için çalışır:
 
 ---
 
+## 9. Online (PvP) Senkronizasyon Tasarımı — v0.3 notu
+
+Maç motoru artık **event-bazlı (lazy)** üretiyor: sonuç önceden belli değildir; her önemli an,
+o anki kadro/taktik/kart/skor durumuyla üretilir ve müdahaleler kalan anları gerçekten değiştirir.
+Bu, tek kişilik modda hız/atlama kontrolünü serbest bırakır; **PvP'de ise bırakmaz.** Plan:
+
+- **Senkron canlı yayın:** PvP maçında zaman çizgisi sunucu otoritesindedir; iki taraf da aynı
+  tempoda izler. **Hız kontrolü ve "Yarıyı İleri Sar" PvP'de kapalıdır.**
+- **Mola hakkı (timeout):** Her menajerin maç başına 1 "Kenara Talimat" molası vardır; kullanınca
+  yayın İKİ taraf için de ~20 sn durur (rakip "mola verildi" vinyeti görür), panel kapanınca akış sürer.
+- **Devre arası penceresi:** 30 sn'lik çift taraflı müdahale süresi; iki taraf da "hazırım" derse erken başlar.
+- **Kopma toleransı:** bağlantı kopan tarafın müdahale hakları otomatik pasif; maç sunucuda akmaya devam eder.
+- Tek kişilik (bot) modda mevcut hız/atlama aynen kalır.
+
+---
+
 ## Ek Önerilerim (onayına sunulur)
 
 | # | Öneri | Değer | Maliyet |

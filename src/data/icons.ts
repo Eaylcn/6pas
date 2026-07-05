@@ -22,6 +22,7 @@ function icon(
     position,
     rarity: 'icon',
     ovr,
+    age: 25 + (name.length % 11), // deterministik "tecrübeli yıldız" yaşı
     atk: stats[0],
     mid: stats[1],
     def: stats[2],
@@ -89,6 +90,7 @@ function iconGk(
     position: 'GK',
     rarity: 'icon',
     ovr,
+    age: 28 + (name.length % 9),
     ref: stats[0],
     command: stats[1],
     distribution: stats[2],

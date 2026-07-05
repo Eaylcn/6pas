@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FieldPlayer, MatchEvent, PlayStyle } from '../types';
 import { isGoalkeeper } from '../types';
-import { getPlayer } from '../data';
+import { getPlayer, getPerk } from '../data';
 import { t } from '../i18n';
 import { Scoreboard } from '../components/Scoreboard';
 import { StylePicker } from './TacticsSetupScreen';
@@ -22,6 +22,8 @@ interface FlatLine {
   isResult: boolean;
   isSuspense: boolean;
   icon: string | null;
+  /** Perk tetiklendiğinde sonuç satırının altına düşen "muhabir notu" */
+  perkNote: string | null;
 }
 
 function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string | null {
@@ -49,6 +51,13 @@ function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string
   }
 }
 
+function perkNoteOf(e: MatchEvent): string | null {
+  if (e.hiddenPerksTriggered.length === 0) return null;
+  if (!['goal', 'save', 'blocked'].includes(e.result)) return null;
+  const perk = getPerk(e.hiddenPerksTriggered[0]);
+  return perk ? `✍ Muhabir notu: “${perk.name}” imzası` : null;
+}
+
 function buildLines(session: MatchSession): FlatLine[] {
   const lines: FlatLine[] = [];
   let score: [number, number] = [0, 0];
@@ -65,6 +74,7 @@ function buildLines(session: MatchSession): FlatLine[] {
         isResult: isLast,
         isSuspense,
         icon: resultIcon(e, i, e.textLines.length),
+        perkNote: isLast ? perkNoteOf(e) : null,
       });
     });
   }
@@ -78,6 +88,7 @@ function buildLines(session: MatchSession): FlatLine[] {
         isResult: l.emphasis === 'goal' || l.emphasis === 'save',
         isSuspense: l.emphasis === 'suspense',
         icon: l.emphasis === 'goal' ? '⚽' : l.emphasis === 'save' ? '🧤' : null,
+        perkNote: null,
       });
     }
   }
@@ -407,21 +418,25 @@ export function MatchSimulationScreen() {
             <p className="headline text-sm text-vermil border-b border-ink/30 pb-2">{t('match.penaltiesIntro')}</p>
           )}
           {visible.map((line, i) => (
-            <p
-              key={i}
-              className={`line-in leading-relaxed ${
-                line.isGoal
-                  ? 'goal-headline text-2xl py-1'
-                  : line.isSuspense
-                    ? 'italic text-ink-soft'
-                    : line.isResult
-                      ? 'font-semibold text-[15px]'
-                      : 'text-[15px]'
-              }`}
-            >
-              {line.icon && <span className="mr-1.5">{line.icon}</span>}
-              {line.text}
-            </p>
+            <div key={i} className="line-in">
+              <p
+                className={`leading-relaxed ${
+                  line.isGoal
+                    ? 'goal-headline text-2xl py-1'
+                    : line.isSuspense
+                      ? 'italic text-ink-soft'
+                      : line.isResult
+                        ? 'font-semibold text-[15px]'
+                        : 'text-[15px]'
+                }`}
+              >
+                {line.icon && <span className="mr-1.5">{line.icon}</span>}
+                {line.text}
+              </p>
+              {line.perkNote && (
+                <p className="text-[11px] italic text-gold border-l-2 border-gold-foil pl-2 mt-0.5">{line.perkNote}</p>
+              )}
+            </div>
           ))}
           {visible.length === 0 && phase === 'H1' && (
             <p className="italic text-ink-faint">Hakem düdüğü çaldı, top santrada…</p>

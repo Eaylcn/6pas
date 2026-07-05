@@ -30,6 +30,7 @@ interface PlayerBase {
   nationality: string;
   league: string;
   club: string;
+  age?: number;
   perks: string[]; // perk id listesi
   isIcon: boolean;
   flavorText: string;

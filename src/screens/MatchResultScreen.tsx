@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { t } from '../i18n';
-import { buildMatchReport, type TeamMatchStats } from '../game/matchReport';
+import { buildMatchReport } from '../game/matchReport';
+import { computeMatchRatings, ratingTone, type PlayerRating } from '../game/ratingsEngine';
 import { useGameStore } from '../store/useGameStore';
 
 export function MatchResultScreen() {
@@ -27,6 +28,14 @@ export function MatchResultScreen() {
       streak: rewards?.newStreak ?? 0,
     });
   }, [session, finalScore, playerWon, rewards]);
+
+  const ratings = useMemo(() => {
+    if (!session) return null;
+    return {
+      home: computeMatchRatings(session.events, session.sim.home, 'home'),
+      away: computeMatchRatings(session.events, session.sim.away, 'away'),
+    };
+  }, [session]);
 
   if (!session || !finalScore || !report) return null;
   const home = session.sim.home.info;
@@ -141,6 +150,17 @@ export function MatchResultScreen() {
         )}
       </div>
 
+      {/* Oyuncu karneleri (SofaScore tarzı) */}
+      {ratings && (
+        <div className="news-card p-4 mb-4">
+          <div className="tag-label mb-3">OYUNCU KARNELERİ</div>
+          <div className="grid grid-cols-2 gap-4">
+            <RatingColumn title={home.teamName} list={ratings.home} />
+            <RatingColumn title={away.teamName} list={ratings.away} />
+          </div>
+        </div>
+      )}
+
       {/* Puan dökümü */}
       {rewards && rewards.total > 0 && (
         <div className="news-card p-4 mb-5">
@@ -180,6 +200,32 @@ export function MatchResultScreen() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function RatingColumn({ title, list }: { title: string; list: PlayerRating[] }) {
+  const toneClass = { great: 'bg-grass text-paper', good: 'bg-ink text-paper', poor: 'bg-vermil text-paper' };
+  return (
+    <div>
+      <div className="font-headline font-bold text-sm mb-1.5 truncate">{title}</div>
+      <div className="space-y-1">
+        {list.map((r) => (
+          <div key={r.player.id} className="flex items-center gap-1.5 text-xs">
+            <span
+              className={`font-score font-bold px-1 py-0.5 min-w-[30px] text-center ${toneClass[ratingTone(r.rating)]}`}
+            >
+              {r.rating.toFixed(1)}
+            </span>
+            <span className="truncate flex-1">{r.player.name}</span>
+            <span className="text-ink-faint shrink-0">
+              {'⚽'.repeat(r.goals)}
+              {r.assists > 0 ? '🅰' : ''}
+              {r.saves >= 2 ? '🧤' : ''}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

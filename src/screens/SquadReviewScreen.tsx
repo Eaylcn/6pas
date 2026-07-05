@@ -57,7 +57,7 @@ export function SquadReviewScreen() {
         </div>
         <div className="space-y-4">
           {inspected ? (
-            <PlayerCard player={inspected} isCaptain={inspected.id === run.captainId} />
+            <PlayerCard player={inspected} isCaptain={inspected.id === run.captainId} detailed />
           ) : (
             <div className="news-card p-4 text-sm italic text-ink-soft text-center">
               Sahadaki bir jetona dokun: kartı ve kimya bağları burada açılır.

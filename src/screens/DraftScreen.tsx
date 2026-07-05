@@ -99,7 +99,7 @@ export function DraftScreen() {
           <ChemistryLegend />
           {chemistry && <ChemistryPanel chemistry={chemistry} />}
           {inspected && (
-            <PlayerCard player={inspected} isCaptain={inspected.id === captainId} />
+            <PlayerCard player={inspected} isCaptain={inspected.id === captainId} detailed />
           )}
         </div>
 
