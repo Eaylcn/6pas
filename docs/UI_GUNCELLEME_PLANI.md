@@ -1,8 +1,10 @@
-# 6Pas: Draft Arena — v0.2 Arayüz Güncelleme Planı
+# 6Pas: Draft Arena — v0.2 Güncelleme Planı
 
 > Kapsam: saha üstü draft/kadro görünümü, kimya highlight, draft UX, maç içi UI,
-> detaylı maç sonu, anlatım bankası genişletme, Gece Baskısı (koyu tema).
-> Durum: **Onay bekliyor** — onay sonrası kodlamaya geçilecek. Oyun mantığı/dengesi değişmiyor.
+> detaylı maç sonu, anlatım bankası genişletme, Gece Baskısı (koyu tema) ve
+> **maç olayları genişletmesi** (duran toplar, penaltılar, kartlar, sakatlıklar,
+> otomatik + maç içi oyuncu değişiklikleri).
+> Durum: **Onay bekliyor** — onay sonrası kodlamaya geçilecek.
 
 ---
 
@@ -121,6 +123,88 @@ Maç sonu ekranı gerçek bir gazete ön sayfasına dönüşür:
 
 ---
 
+## 8. Maç Olayları Genişletmesi — Duran Toplar, Kartlar, Sakatlıklar
+
+Motorun en büyük genişlemesi. Yeni event tipleri eklenir; anlatım aynı "doğal yayın"
+kuralına uyar (mekanik terim sızmaz), skor dengesi 1000 maçlık simülasyonla yeniden kalibre edilir.
+
+### 8.1 Teknik ön koşul: segment bazlı simülasyon
+
+Şu an her yarının eventleri yarı başında topluca üretiliyor. Maç içi müdahale ve
+oto değişikliklerin gerçek etki etmesi için üretim **event-bazlı (lazy)** hale gelir:
+sıradaki önemli an, bir önceki an ekranda tamamlandıktan sonra, o anki kadro/taktik/kart
+durumuyla üretilir. Oynanış hissi değişmez; müdahaleler anında etkili olur.
+(İleride online: müdahale anları doğal senkron noktası olur — mimari not.)
+
+### 8.2 Duran toplar
+
+- **Faul kazanma**: savunma dueli kaybedip sert müdahaleye düşerse (düşük savunma zarı)
+  atak "faul kazanıldı" ile biter → tehlikeli bölgedeyse **serbest vuruş** eventi doğar.
+- **Serbest vuruş** (yeni event tipi `serbest-vurus`): takımın duran top sorumlusu
+  (en yüksek ATK+MID karışımı; 'Ölü Köşe' perki sahibiyse o) direkt şut kullanır.
+  Baraj + kaleci çözümlemesi mevcut şut mekaniğiyle; 'Ölü Köşe', 'Uçan Eldiven',
+  'Duvar Etkisi' gibi mevcut perklerin trigger listesine `serbest-vurus` eklenir.
+- **Penaltı (maç içi)** (yeni event tipi `penalti`): ceza sahası içinde faul → tek atış;
+  mevcut seri penaltı çözümleyicisi tek atış modunda yeniden kullanılır.
+  Anlatımda hakem kararı + itiraz rengi.
+- **Korner geliştirmesi**: `corner-won` sonuçları artık %35 ihtimalle takip eventi üretir
+  (kafa/karambol) — korner kazanmak gerçekten değerli olur.
+- Denge hedefi: maç başına 2-4 duran top anı, penaltı ~%15 maç (0-1 adet).
+
+### 8.3 Sarı / Kırmızı kartlar
+
+- Sert faul → **sarı kart** (event satırı + 🟨). İkinci sarı → **kırmızı**.
+  Direkt kırmızı çok nadir (son adam pozisyonunda net gol şansını kesme).
+- **Kırmızı etkisi**: takım 5 kişi kalır — pozisyon üretim temposu ve savunma
+  duellerine kalıcı ceza; jeton kırmızı mühürlenir, değişiklikle telafi edilemez.
+- Oyun tarzı etkisi: Kontra/Defansif takımlar Ofansif rakibe karşı hafif artmış faul
+  eğilimi taşır; kart riski taktik seçiminin gizli bedeli olur.
+- Denge hedefi: maç başına ortalama 1-3 sarı; kırmızı ~%5 maç.
+- Kart geçmişi run'a işlenmez (MVP+1'de maç içi etki; kart cezası birikimi v0.3 adayı).
+
+### 8.4 Sakatlıklar
+
+- Nadir olay (~%10 maç, en fazla 1): sert müdahale/talihsiz iniş → oyuncu devam edemez.
+- **Zorunlu oto değişiklik** tetiklenir (bkz. 8.5). Uygun yedek yoksa (pozisyon dolu
+  değil veya hak bitti) takım eksik oynar — gerçek risk/drama.
+- Sakatlık şiddeti v0.2'de yalnızca **maç içi** etkidir; "sonraki maçı kaçırma"
+  (run'a taşınan sakatlık) v0.3 adayı olarak modele esnek bırakılır.
+- Anlatım: sağlık ekibi/sedye rengiyle, abartısız.
+
+### 8.5 Otomatik oyuncu değişiklikleri (oyun stiline göre)
+
+Basit bir **menajer beyni** (`autoSubEngine`) her iki takım için çalışır:
+
+| Tetik | Davranış |
+|---|---|
+| Sakatlık | Aynı pozisyondaki en güçlü yedek anında girer (zorunlu) |
+| 45'+ geride & plan Ofansif | Ghost: hücumcu takviyesi (DEF→ATK dönüşümü değil; aynı pozisyon en iyi OVR) |
+| 45'+ önde & plan Defansif | Ghost: yıpranan hücumcu yerine taze isim |
+| Kullanıcı tarafı | Oto değişiklik **yalnızca sakatlıkta** otomatik; taktiksel olanlar bildirim önerisi olarak düşer ("Kenardan öneri: …"), tek dokunuşla onaylanır |
+
+- Ghost rakip aynı kurallarla tam otomatik oynar (adil rekabet).
+- Her değişiklik anlatıma doğal satır olarak düşer (🔁 "58' — {takım} hamlesini yaptı…").
+
+### 8.6 Maç içi manuel değişiklik ve hak sistemi
+
+- Toplam değişiklik hakkı **2 → 3'e** çıkar; devre arası + **maç içi** kullanılabilir.
+- Maç içinde: **Duraklat → "Kenara Talimat" paneli** → oyuncu değişikliği (hak varsa)
+  ve/veya oyun tarzı ayarı; devam edince kalan eventler yeni durumla üretilir (8.1 sayesinde).
+- Maç içi taktik değişikliği sınırı: devre arası hariç en fazla **2 kez** (spam koruması,
+  "sürekli müdahale yok" ruhu korunur).
+- Sakatlık değişikliği haktan düşer (gerçekçi kadro yönetimi baskısı).
+- Aynı pozisyon kuralı geçerli kalır; çıkan oyuncu tekrar giremez.
+
+### 8.7 UI yansımaları
+
+- Timeline'a yeni piktogramlar: 🟨 🟥 ⚕ (sakatlık) 🔁 (değişiklik) ⚽ (duran top golü işaretli)
+- Jetonlarda kart mühürü / sakatlık işareti; kırmızı gören oyuncu sahadan düşer
+- Maç sonu ön sayfasına **"Hakem Karnesi"** kutusu (kartlar, penaltı kararları) ve
+  duran top golü istatistiği
+- Golcü listesinde penaltı golü "(P)", serbest vuruş golü "(SV)" imi
+
+---
+
 ## Ek Önerilerim (onayına sunulur)
 
 | # | Öneri | Değer | Maliyet |
@@ -141,10 +225,11 @@ vakit kalırsa, Ö3 ve Ö5 v0.3'e.
 | 1 | Tema token altyapısı + Gece Baskısı | Sonraki her bileşen iki temada doğar, rework olmaz |
 | 2 | PitchView + jetonlar + kimya bağ çizgileri | Draft/kadro/rakip/devre arası hepsinin temeli |
 | 3 | Draft UX (kimya delta, ilerleme, İkon anı, kaptan şeridi) | PitchView üstüne kurulur |
-| 4 | Maç içi UI (timeline, golcüler, piktogramlar, GOOOL bandı, dokun-ilerle, momentum) | Bağımsız blok |
-| 5 | Maç sonu ön sayfası (manşet üreteci, istatistikler, gol listesi, MOTM, Ö4 kupürler) | Motor yardımcıları (istatistik türetme) burada eklenir |
-| 6 | Anlatım bankası genişletme + iki temada e2e test + ekran görüntüsü turu | Kapanış ve doğrulama |
+| 4 | **Motor genişletmesi**: segment bazlı üretim, duran toplar, penaltı, kartlar, sakatlık, oto + maç içi değişiklik, 1000 maçlık yeniden kalibrasyon | UI'dan önce motor oturmalı; timeline/ön sayfa bu veriyi gösterecek |
+| 5 | Maç içi UI (timeline + yeni piktogramlar, golcüler, GOOOL bandı, dokun-ilerle, momentum, "Kenara Talimat" paneli) | Faz 4'ün olaylarını görselleştirir |
+| 6 | Maç sonu ön sayfası (manşet üreteci, istatistikler, gol listesi, Hakem Karnesi, MOTM, Ö4 kupürler) | Tüm olay verisi hazırken yazılır |
+| 7 | Anlatım bankası genişletme (yeni event tipleri dahil) + iki temada e2e test + ekran görüntüsü turu | Kapanış ve doğrulama |
 
-**Motor etkisi:** Oyun mantığı ve denge değişmiyor. Sadece türetme yardımcıları eklenir
-(gol listesi, yarı skoru, takım istatistikleri, manşet seçici) — hepsi mevcut event
-verisinden okunur, simülasyona dokunulmaz.
+**Denge notu:** Faz 4 skor dağılımını etkileyebilir (penaltı golleri, kırmızı kart etkisi).
+Mevcut hedef bant (çoğunlukla 0-0…3-1, 7+ gol ≈ %1) 1000 maçlık simülasyonla yeniden
+kalibre edilerek korunur. Kart/sakatlık/duran top oranları da aynı scriptle raporlanır.
