@@ -411,6 +411,22 @@ const tacticShiftBank: Record<string, string[]> = {
   ],
 };
 
+// Gerginlik / itişme: sert faul sonrası ortalık karışır
+const scuffleBank: string[] = [
+  'Ortalık bir anda karıştı! {attacker} ile {defender} burun buruna, iki takım birbirine girdi!',
+  'İtişme büyüyor! Yedek kulübeleri bile ayakta; hakem araya girmekte zorlanıyor.',
+  'Sinirler gerildi! {defender} özür diler gibi yaklaştı ama {attacker} bunu duymak istemedi.',
+  'Kaptanlar araya girip ortalığı yatıştırmaya çalışıyor. Halısahada tansiyon zirvede!',
+];
+const scuffleCalmLines: string[] = [
+  'Hakem uzun uzun konuştu; oyun sakinleşerek devam ediyor.',
+  'Tansiyon güçlükle de olsa düştü; top yeniden oyunda.',
+];
+const scuffleCardLines: string[] = [
+  'Ve hakem gerginliğin faturasını kesti: {defender} sarı kart görüyor!',
+  'Hakem itişmenin başrolüne sarıyı gösterdi: {defender} kartını gördü.',
+];
+
 const subBank: string[] = [
   "{minute}' {team} hamlesini yapıyor: {helper} çıkıyor, {attacker} oyuna giriyor.",
   "{minute}' kenardan değişiklik geldi. {attacker}, {helper}'in yerine sahada.",
@@ -466,6 +482,8 @@ export interface NarrationEngine {
   subLines(ctx: NarrationContext): string[];
   /** Taktik kayması satırı (skor durumu aktif taktiği değiştirdiğinde) */
   tacticShiftLine(team: string, minute: number, style: string): string;
+  /** Gerginlik/itişme satırları */
+  scuffleLines(ctx: NarrationContext, cardShown: boolean): string[];
 }
 
 export function createNarrationEngine(rng: Rng): NarrationEngine {
@@ -594,6 +612,13 @@ export function createNarrationEngine(rng: Rng): NarrationEngine {
     tacticShiftLine(team, minute, style) {
       const bank = tacticShiftBank[style] ?? tacticShiftBank.dengeli;
       return pickFresh(rng, bank, used).replaceAll('{team}', team).replaceAll('{minute}', String(minute));
+    },
+
+    scuffleLines(ctx, cardShown) {
+      return [
+        fill(pickFresh(rng, scuffleBank, used), ctx),
+        fill(pickFresh(rng, cardShown ? scuffleCardLines : scuffleCalmLines, used), ctx),
+      ];
     },
   };
 }

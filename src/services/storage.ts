@@ -27,3 +27,17 @@ export async function remove(key: string): Promise<void> {
     // sessiz geç
   }
 }
+
+/** Debug: oyuna ait TÜM veriyi siler (profil, run, leaderboard, tema, mod tercihi) */
+export function resetAllData(): void {
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(PREFIX)) doomed.push(key);
+    }
+    doomed.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // depolama kapalıysa yapılacak bir şey yok
+  }
+}

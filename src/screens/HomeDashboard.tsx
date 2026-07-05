@@ -5,6 +5,7 @@ import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
 import { getClippings, type MatchClipping } from '../services/historyService';
 import { isRealModeEnabled, setRealMode } from '../data/realMode';
+import { resetAllData } from '../services/storage';
 
 export function HomeDashboard() {
   const user = useUserStore((s) => s.user);
@@ -56,20 +57,35 @@ export function HomeDashboard() {
         {t('home.leaderboard')}
       </button>
 
-      {isRealModeEnabled() && (
-        <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft">
-          <span>⭐ Gerçek Yıldızlar Modu açık</span>
-          <button
-            className="underline hover:text-ink"
-            onClick={() => {
-              setRealMode(false);
+      <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft">
+        {isRealModeEnabled() ? (
+          <span className="flex items-center gap-2">
+            ⭐ Gerçek Yıldızlar Modu açık
+            <button
+              className="underline hover:text-ink"
+              onClick={() => {
+                setRealMode(false);
+                window.location.reload();
+              }}
+            >
+              Kapat
+            </button>
+          </span>
+        ) : (
+          <span />
+        )}
+        <button
+          className="underline text-ink-faint hover:text-vermil"
+          onClick={() => {
+            if (window.confirm('TÜM oyun verisi silinecek (profil, kadro, puanlar). Emin misin?')) {
+              resetAllData();
               window.location.reload();
-            }}
-          >
-            Kapat
-          </button>
-        </div>
-      )}
+            }
+          }}
+        >
+          🗑 Sıfırla
+        </button>
+      </div>
 
       {clippings.length > 0 && (
         <div className="mt-6">

@@ -17,8 +17,16 @@ export interface BallCue {
 const WING_TYPES = new Set<string>(['dar-aci', 'korner', 'ters-top', 'calim', 'rabona']);
 
 function ballPos(cue: BallCue | null): { x: number; y: number } {
+  // Seri penaltılar: tek kalede (sağ kale) oynanır — yaklaşma → nokta → vuruş
+  if (cue?.eventType === 'penalti-seri') {
+    if (cue.isResult) {
+      if (cue.resultKind === 'goal') return { x: 96.5, y: 31 };
+      if (cue.resultKind === 'save') return { x: 93.5, y: 31 };
+      return { x: 99.5, y: 7 }; // kaçan penaltı
+    }
+    return cue.idx === 0 ? { x: 80, y: 31 } : { x: 88, y: 31 }; // yaklaşma → penaltı noktası
+  }
   if (!cue || !cue.side) {
-    if (cue?.eventType === 'penalti-seri') return { x: 84, y: 31 };
     return { x: 50, y: 31 }; // santra
   }
   const dir = cue.side === 'home' ? 1 : -1;
@@ -29,6 +37,7 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
 
   if (cue.eventType === 'taktik') return { x: 50, y: 31 }; // kenar notu — top santrada bekler
   if (cue.eventType === 'sakatlik' || cue.eventType === 'degisiklik') return { x: 50, y: 58 };
+  if (cue.eventType === 'gerginlik') return { x: 50 + dir * 24, y }; // faul noktasında itişme
   if (cue.eventType === 'faul') return { x: 50 + dir * 24, y };
   if (cue.eventType === 'penalti') return { x: 50 + dir * 40, y: 31 };
   if (cue.eventType === 'serbest-vurus') {

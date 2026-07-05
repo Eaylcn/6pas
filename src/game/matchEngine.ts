@@ -37,6 +37,7 @@ const FOUL_PEN_CHANCE = 0.06; // faulün penaltı olma ihtimali
 const YELLOW_CHANCE = 0.4;
 const DIRECT_RED_CHANCE = 0.03; // yalnızca net gol şansı pozisyonlarında
 const INJURY_ON_FOUL = 0.04;
+const SCUFFLE_ON_FOUL = 0.1; // sert faul sonrası gerginlik/itişme
 const CORNER_FOLLOWUP = 0.35;
 
 export interface SimTeamState {
@@ -554,6 +555,23 @@ function resolveDuelChain(ctx: DuelContext): MatchEvent[] {
         removeFromField(ctx.defending, defender.id, 'red');
       }
 
+      // Gerginlik: sert faul sonrası ortalık karışabilir (nadir renk olayı)
+      if (rng.chance(SCUFFLE_ON_FOUL)) {
+        const scuffleCtx = narrationCtx(ctx, { attacker, helper, defender, gk }, [], scoreNow(ctx));
+        const scuffleCard = card === null && rng.chance(0.3); // hakem gerginlikte sarı çıkarabilir
+        if (scuffleCard) ctx.defending.yellowCards[defender.id] = (ctx.defending.yellowCards[defender.id] ?? 0) + 1;
+        events.push(
+          baseEvent(
+            ctx,
+            'gerginlik',
+            'scuffle',
+            [attacker.id, defender.id],
+            narration.scuffleLines(scuffleCtx, scuffleCard),
+            scuffleCard ? { card: 'yellow', cardPlayerId: defender.id } : undefined,
+          ),
+        );
+      }
+
       // Duran top devamı
       const zoneRoll = rng.next();
       if (zoneRoll < FOUL_PEN_CHANCE) {
@@ -867,13 +885,17 @@ export function simulatePenaltyShootout(rng: Rng, home: TeamMatchInfo, away: Tea
       else ag++;
     }
     const score = `${hg} - ${ag}`;
-    lines.push({ text: `${round}. penaltı — ${team.teamName}: ${shooter.name} topun başında.`, emphasis: 'normal' });
-    lines.push({ text: fresh(penSuspense), emphasis: 'suspense' });
+    lines.push({ text: `${round}. penaltı — ${team.teamName}: ${shooter.name} topun başında.`, emphasis: 'normal', side });
+    lines.push({ text: fresh(penSuspense), emphasis: 'suspense', side });
     if (scored) {
-      lines.push({ text: fresh(penGoal).replace('{score}', score), emphasis: 'goal' });
+      lines.push({ text: fresh(penGoal).replace('{score}', score), emphasis: 'goal', side });
     } else {
       const bank = rng.chance(0.65) ? penSave : penMiss;
-      lines.push({ text: fresh(bank).replace('{gk}', gk?.name ?? 'Kaleci').replace('{score}', score), emphasis: 'save' });
+      lines.push({
+        text: fresh(bank).replace('{gk}', gk?.name ?? 'Kaleci').replace('{score}', score),
+        emphasis: 'save',
+        side,
+      });
     }
   };
 

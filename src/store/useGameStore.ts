@@ -145,6 +145,7 @@ function playerTeamInfo(run: Run): TeamMatchInfo {
   const info: TeamMatchInfo = {
     runId: run.id,
     teamName: run.teamName,
+    managerName: useUserStore.getState().user?.username,
     formationId: run.formationId,
     defaultPlayStyle: run.defaultPlayStyle,
     tacticalPlan: run.tacticalPlan,

@@ -158,7 +158,8 @@ export type MatchEventType =
   | 'faul'
   | 'sakatlik'
   | 'degisiklik'
-  | 'taktik';
+  | 'taktik'
+  | 'gerginlik';
 
 export type EventResult =
   | 'goal'
@@ -170,11 +171,14 @@ export type EventResult =
   | 'foul'
   | 'injury'
   | 'substitution'
-  | 'tactic-shift';
+  | 'tactic-shift'
+  | 'scuffle';
 
 export interface TeamMatchInfo {
   runId?: string;
   teamName: string;
+  /** Teknik direktör (kullanıcı adı veya ghost TD ismi) */
+  managerName?: string;
   formationId: string;
   defaultPlayStyle: PlayStyle;
   tacticalPlan: TacticalPlan;
@@ -251,6 +255,8 @@ export interface WeatherModifier {
 export interface PenaltyKickLine {
   text: string;
   emphasis: 'normal' | 'suspense' | 'goal' | 'save';
+  /** Vuruşu kullanan taraf — canlı saha ve takım etiketi için */
+  side?: 'home' | 'away';
 }
 
 export interface PenaltyShootoutResult {

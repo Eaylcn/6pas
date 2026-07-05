@@ -51,8 +51,13 @@ export function generateGhostOpponent(rng: Rng, avoidName?: string): TeamMatchIn
 
   const namePool = teamNamePool.filter((n) => n !== avoidName);
   const chemistry = calculateTeamChemistry(players, captainId);
+  const ghostManagers = [
+    'F. Korkmaz', 'R. Adalı', 'C. Meriç', 'H. Doğanay', 'S. Yücelen', 'A. Demirelli',
+    'M. Karakuş', 'T. Erdenay', 'K. Soysal', 'B. Aydınlar',
+  ];
   const info: TeamMatchInfo = {
     teamName: rng.pick(namePool),
+    managerName: rng.pick(ghostManagers),
     formationId: formation.id,
     defaultPlayStyle: rng.pick(styles),
     tacticalPlan: randomPlan(rng),

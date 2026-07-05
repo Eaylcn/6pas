@@ -56,6 +56,8 @@ function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string
       return e.card === 'red' ? '🟥' : e.card === 'yellow' ? '🟨' : null;
     case 'tactic-shift':
       return '📋';
+    case 'scuffle':
+      return '💢';
     default:
       return null;
   }
@@ -123,14 +125,15 @@ function buildLines(session: MatchSession): FlatLine[] {
         isSuspense: l.emphasis === 'suspense',
         icon: l.emphasis === 'goal' ? '⚽' : l.emphasis === 'save' ? '🧤' : null,
         perkNote: null,
-        side: null,
-        isEventStart: false,
+        side: l.side ?? null,
+        isEventStart: l.emphasis === 'normal', // her vuruşun ilk satırı
         cue: {
-          side: null,
+          side: l.side ?? null,
           eventType: 'penalti-seri',
-          idx: i,
-          count: session.penalties!.lines.length,
-          isResult: l.emphasis !== 'suspense' && l.emphasis !== 'normal',
+          // Vuruş evresi: normal=yaklaşma, suspense=nokta, sonuç=vuruş
+          idx: l.emphasis === 'normal' ? 0 : l.emphasis === 'suspense' ? 1 : 2,
+          count: 3,
+          isResult: l.emphasis === 'goal' || l.emphasis === 'save',
           isGoal: l.emphasis === 'goal',
           resultKind: l.emphasis === 'goal' ? 'goal' : l.emphasis === 'save' ? 'save' : null,
           minute: 70,
@@ -370,6 +373,8 @@ export function MatchSimulationScreen() {
       if (next.isSuspense) delay = 1900;
       if (next.isResult) delay = 2100;
       if (next.isGoal) delay = 2300;
+      // Seri penaltılar: nefes kesen, ağır tempo
+      if (next.cue.eventType === 'penalti-seri') delay *= 1.6;
       const timer = setTimeout(() => advanceReveal(), delay / speed);
       return () => clearTimeout(timer);
     }
@@ -408,8 +413,11 @@ export function MatchSimulationScreen() {
   if (!session || !run) return null;
 
   const last = visible[visible.length - 1];
-  // Top, GELMEKTE OLAN satırın pozisyonuna şimdiden süzülür → metinle eşzamanlı varış
-  const upcoming = lines[cursor] ?? last;
+  // Gol koreografisi: hazırlık satırlarında top ÖNDEN pozisyon alır (gelen satır),
+  // sonuç satırlarında (gol/kurtarış) top METİNLE BİRLİKTE varır — spiker "gol"
+  // derken top ağlara girer, animasyon ve anlatım eşzamanlı olur.
+  const upcomingLine = lines[cursor];
+  const cueLine = upcomingLine && !upcomingLine.cue.isResult ? upcomingLine : last;
   const score = last?.score ?? [session.sim.home.goals, session.sim.away.goals];
   const minute = last?.minute ?? (phase === 'H1' ? 1 : phase === 'H2' ? 31 : phase === 'ET' ? 61 : 70);
   const revealed = revealedEvents(session, cursor);
@@ -437,6 +445,8 @@ export function MatchSimulationScreen() {
         score={score as [number, number]}
         minute={minute}
         halfLabel={t(phaseLabels[phase])}
+        homeManager={session.sim.home.info.managerName}
+        awayManager={session.sim.away.info.managerName}
       />
 
       {/* Golcüler */}
@@ -470,7 +480,7 @@ export function MatchSimulationScreen() {
 
       {/* Canlı saha: top anlatımla eşzamanlı süzülür */}
       <div className="mt-1">
-        <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={upcoming?.cue ?? null} />
+        <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={cueLine?.cue ?? null} />
       </div>
 
       <Timeline events={revealed} minute={minute} />

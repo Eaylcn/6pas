@@ -37,6 +37,7 @@ export function MatchmakingScreen() {
         <span className="font-headline font-bold text-xl">{opponent.teamName}</span>
         <div className="text-[11px] font-score uppercase tracking-widest text-ink-soft mt-1">
           {t('common.teamPower')}: {opponent.power} · {t('common.chemistry')}: {opponent.chemistry.score}
+          {opponent.managerName ? ` · TD: ${opponent.managerName}` : ''}
         </div>
       </div>
       <div className="grid md:grid-cols-[minmax(280px,400px)_1fr] gap-5 mb-5">
