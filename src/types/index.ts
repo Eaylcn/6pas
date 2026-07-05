@@ -157,7 +157,8 @@ export type MatchEventType =
   | 'penalti'
   | 'faul'
   | 'sakatlik'
-  | 'degisiklik';
+  | 'degisiklik'
+  | 'taktik';
 
 export type EventResult =
   | 'goal'
@@ -168,7 +169,8 @@ export type EventResult =
   | 'defended'
   | 'foul'
   | 'injury'
-  | 'substitution';
+  | 'substitution'
+  | 'tactic-shift';
 
 export interface TeamMatchInfo {
   runId?: string;

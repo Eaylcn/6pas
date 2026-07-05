@@ -14,6 +14,7 @@ import {
   type MatchPhase,
   type MatchSession,
 } from '../store/useGameStore';
+import { getActiveTacticByScoreState as getActiveTactic } from '../game/tacticsEngine';
 
 interface FlatLine {
   text: string;
@@ -53,6 +54,8 @@ function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string
       return '⚕️';
     case 'foul':
       return e.card === 'red' ? '🟥' : e.card === 'yellow' ? '🟨' : null;
+    case 'tactic-shift':
+      return '📋';
     default:
       return null;
   }
@@ -207,7 +210,7 @@ function Timeline({ events, minute }: { events: MatchEvent[]; minute: number }) 
 
 // ---- Momentum ibresi ----
 function Momentum({ events }: { events: MatchEvent[] }) {
-  const meaningful = events.filter((e) => !['substitution', 'injury'].includes(e.result)).slice(-3);
+  const meaningful = events.filter((e) => !['substitution', 'injury', 'tactic-shift'].includes(e.result)).slice(-3);
   let value = 0; // -1 (rakip) .. +1 (biz)
   for (const e of meaningful) value += e.attackingTeam === 'home' ? 1 / 3 : -1 / 3;
   const pct = 50 + value * 45;
@@ -405,10 +408,20 @@ export function MatchSimulationScreen() {
   if (!session || !run) return null;
 
   const last = visible[visible.length - 1];
+  // Top, GELMEKTE OLAN satırın pozisyonuna şimdiden süzülür → metinle eşzamanlı varış
+  const upcoming = lines[cursor] ?? last;
   const score = last?.score ?? [session.sim.home.goals, session.sim.away.goals];
   const minute = last?.minute ?? (phase === 'H1' ? 1 : phase === 'H2' ? 31 : phase === 'ET' ? 61 : 70);
   const revealed = revealedEvents(session, cursor);
   const goals = revealed.filter((e) => e.result === 'goal');
+
+  // Aktif taktikler (skor durumuna göre)
+  const homeActive = t(
+    `playStyle.${getActiveTactic(session.sim.home.info.tacticalPlan, session.sim.home.goals, session.sim.away.goals)}`,
+  );
+  const awayActive = t(
+    `playStyle.${getActiveTactic(session.sim.away.info.tacticalPlan, session.sim.away.goals, session.sim.home.goals)}`,
+  );
 
   return (
     <div className="max-w-2xl mx-auto relative">
@@ -450,9 +463,14 @@ export function MatchSimulationScreen() {
         </div>
       )}
 
-      {/* Canlı saha: top anlatımla senkron süzülür */}
-      <div className="mt-2">
-        <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={last?.cue ?? null} />
+      {/* Aktif taktikler */}
+      <div className="text-center text-[10px] font-score uppercase tracking-widest text-ink-soft mt-1">
+        📋 {homeActive} · {awayActive}
+      </div>
+
+      {/* Canlı saha: top anlatımla eşzamanlı süzülür */}
+      <div className="mt-1">
+        <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={upcoming?.cue ?? null} />
       </div>
 
       <Timeline events={revealed} minute={minute} />
@@ -495,20 +513,26 @@ export function MatchSimulationScreen() {
                   {line.side === 'home' ? session.sim.home.info.teamName : session.sim.away.info.teamName}
                 </span>
               )}
-              <p
-                className={`leading-relaxed ${
-                  line.isGoal
-                    ? 'goal-headline text-2xl py-1'
-                    : line.isSuspense
-                      ? 'italic text-ink-soft'
-                      : line.isResult
-                        ? 'font-semibold text-[15px]'
-                        : 'text-[15px]'
-                }`}
-              >
-                {line.icon && <span className="mr-1.5">{line.icon}</span>}
-                {line.text}
-              </p>
+              {line.isGoal ? (
+                <div className="goal-pop border-y-4 border-double border-vermil bg-vermil/10 px-3 py-2 my-1 text-center">
+                  <p className="goal-headline text-2xl leading-tight">⚽ {line.text}</p>
+                </div>
+              ) : (
+                <p
+                  className={`leading-relaxed ${
+                    line.cue.eventType === 'taktik'
+                      ? 'italic text-ink-soft text-[13px]'
+                      : line.isSuspense
+                        ? 'italic text-ink-soft'
+                        : line.isResult
+                          ? 'font-semibold text-[15px]'
+                          : 'text-[15px]'
+                  }`}
+                >
+                  {line.icon && <span className="mr-1.5">{line.icon}</span>}
+                  {line.text}
+                </p>
+              )}
               {line.perkNote && (
                 <p className="text-[11px] italic text-gold border-l-2 border-gold-foil pl-2 mt-0.5">{line.perkNote}</p>
               )}
@@ -567,9 +591,11 @@ export function MatchSimulationScreen() {
 }
 
 function playerName(e: MatchEvent): string {
-  // Gol eventlerinde ilk katılımcı golcüdür
+  // Gol eventlerinde ilk katılımcı golcüdür — "K. Yıldırım" formatı (isim karışıklığına karşı)
   try {
-    return getPlayer(e.playersInvolved[0]).name.split(' ').slice(-1)[0];
+    const parts = getPlayer(e.playersInvolved[0]).name.split(' ');
+    const surname = parts[parts.length - 1];
+    return parts.length > 1 ? `${parts[0][0]}. ${surname}` : surname;
   } catch {
     return '';
   }

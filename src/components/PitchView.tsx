@@ -46,7 +46,9 @@ const ROW_Y: Record<'ATK' | 'MID' | 'DEF' | 'GK', number> = { ATK: 30, MID: 62, 
 
 function surname(name: string): string {
   const parts = name.split(' ');
-  return parts[parts.length - 1];
+  const last = parts[parts.length - 1];
+  // "K. YILDIRIM" — aynı soyadlı iki oyuncu aynı kişi sanılmasın
+  return parts.length > 1 ? `${parts[0][0]}. ${last}` : last;
 }
 
 export function PitchView({

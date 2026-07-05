@@ -13,10 +13,10 @@ export interface TacticModifiers {
 }
 
 const baseModifiers: Record<PlayStyle, TacticModifiers> = {
-  ofansif: { tempo: 1.25, attack: 2, defense: -2, goalkeeper: 0, opponentShotPenalty: 0, counterBias: 0 },
+  ofansif: { tempo: 1.35, attack: 3, defense: -3, goalkeeper: 0, opponentShotPenalty: 0, counterBias: 0 },
   dengeli: { tempo: 1, attack: 0, defense: 0, goalkeeper: 0, opponentShotPenalty: 0, counterBias: 0 },
-  defansif: { tempo: 0.8, attack: -1, defense: 2, goalkeeper: 1, opponentShotPenalty: 1, counterBias: 0 },
-  kontra: { tempo: 0.9, attack: 0, defense: 1, goalkeeper: 0, opponentShotPenalty: 0, counterBias: 0.35 },
+  defansif: { tempo: 0.72, attack: -2, defense: 3, goalkeeper: 1, opponentShotPenalty: 2, counterBias: 0 },
+  kontra: { tempo: 0.85, attack: 0, defense: 1, goalkeeper: 0, opponentShotPenalty: 0, counterBias: 0.4 },
 };
 
 /** Skor durumuna göre aktif taktiği döndürür */
@@ -41,8 +41,8 @@ export function applyTacticModifiers(
 ): TacticModifiers {
   const mods = { ...baseModifiers[style] };
   if (style === 'kontra' && opponentStyle === 'ofansif') {
-    mods.counterBias += 0.3;
-    mods.attack += 2; // kontra ataklarında güç
+    mods.counterBias += 0.35;
+    mods.attack += 3; // kontra ataklarında güç
   }
   if (formationAffinity === style) {
     mods.attack += 0.5;

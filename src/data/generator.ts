@@ -164,11 +164,17 @@ function bandOf(rarity: Rarity): RarityBand {
 
 function pickIdentity(rng: Rng, usedNames: Set<string>) {
   const nations = Object.keys(nameBanks);
-  for (let attempt = 0; attempt < 120; attempt++) {
+  for (let attempt = 0; attempt < 250; attempt++) {
     const nationality = rng.pick(nations);
     const bank = nameBanks[nationality];
-    const name = `${rng.pick(bank.first)} ${rng.pick(bank.last)}`;
+    const first = rng.pick(bank.first);
+    const last = rng.pick(bank.last);
+    const name = `${first} ${last}`;
     if (usedNames.has(name)) continue;
+    // Aynı soyad en fazla 3 kez ve hep farklı baş harfle ("K. Yıldırım" ayrımı net kalsın)
+    const sameSurname = [...usedNames].filter((n) => n.endsWith(` ${last}`));
+    if (sameSurname.length >= 3) continue;
+    if (sameSurname.some((n) => n[0] === first[0])) continue;
     usedNames.add(name);
     const leagueId = rng.pick(bank.homeLeagues);
     const clubPool = clubs.filter((c) => c.leagueId === leagueId);

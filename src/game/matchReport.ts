@@ -75,7 +75,10 @@ function playerNameOf(id: string): string {
 
 function surnameOf(id: string): string {
   const name = playerNameOf(id);
-  return name.split(' ').slice(-1)[0] ?? name;
+  const parts = name.split(' ');
+  const surname = parts[parts.length - 1] ?? name;
+  // "K. Yıldırım" formatı — aynı soyadlı oyuncular karışmasın
+  return parts.length > 1 ? `${parts[0][0]}. ${surname}` : surname;
 }
 
 // ---- Manşet üreteci (öncelik sıralı kurallar) ----

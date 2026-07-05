@@ -48,6 +48,8 @@ export interface SimTeamState {
   injuredIds: string[];
   subsUsed: number;
   tacticalSubDone: boolean;
+  /** Son bilinen aktif taktik — kayma anlatımı için */
+  lastActiveStyle: string | null;
 }
 
 export function createSimTeamState(info: TeamMatchInfo): SimTeamState {
@@ -60,6 +62,7 @@ export function createSimTeamState(info: TeamMatchInfo): SimTeamState {
     injuredIds: [],
     subsUsed: 0,
     tacticalSubDone: false,
+    lastActiveStyle: null,
   };
 }
 
@@ -591,7 +594,7 @@ function resolveDuelChain(ctx: DuelContext): MatchEvent[] {
       const clearChance = margin >= CLEAR_CHANCE_MARGIN;
       const totalGoals = ctx.attacking.goals + ctx.defending.goals;
       const runawayPenalty =
-        Math.max(0, ctx.attacking.goals - 1) * 3 + Math.max(0, totalGoals - 3) * 3 + Math.max(0, totalGoals - 4) * 4;
+        Math.max(0, ctx.attacking.goals - 1) * 3 + Math.max(0, totalGoals - 3) * 4 + Math.max(0, totalGoals - 4) * 5;
       const shotScore =
         attacker.atk +
         attackerPerks.bonus +
@@ -740,6 +743,30 @@ export function produceEvent(sim: MatchSim, minute: number, half: 1 | 2): MatchE
   // Pozisyon sahipliği
   const homeStyle = getActiveTacticByScoreState(sim.home.info.tacticalPlan, sim.home.goals, sim.away.goals);
   const awayStyle = getActiveTacticByScoreState(sim.away.info.tacticalPlan, sim.away.goals, sim.home.goals);
+
+  // Taktik kayması anlatımı: skor durumu aktif düzeni değiştirdiyse kenar notu düşer
+  for (const [side, style] of [
+    ['home', homeStyle],
+    ['away', awayStyle],
+  ] as const) {
+    const state = side === 'home' ? sim.home : sim.away;
+    if (state.lastActiveStyle !== null && state.lastActiveStyle !== style) {
+      events.push({
+        minute,
+        half,
+        type: 'taktik',
+        attackingTeam: side,
+        defendingTeam: side === 'home' ? 'away' : 'home',
+        playersInvolved: [],
+        hiddenPerksTriggered: [],
+        hiddenDiceRolls: [],
+        textLines: [sim.narration.tacticShiftLine(state.info.teamName, minute, style)],
+        result: 'tactic-shift',
+        scoreAfterEvent: [sim.home.goals, sim.away.goals],
+      });
+    }
+    state.lastActiveStyle = style;
+  }
   const homeMods = applyTacticModifiers(homeStyle, awayStyle, getFormation(sim.home.info.formationId).playStyleAffinity);
   const awayMods = applyTacticModifiers(awayStyle, homeStyle, getFormation(sim.away.info.formationId).playStyleAffinity);
 

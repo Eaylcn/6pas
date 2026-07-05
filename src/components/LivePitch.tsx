@@ -1,18 +1,16 @@
-// Canlı saha: anlatımla senkron hareket eden top + iki takımın dizilişi.
-// Ev sahibi soldan sağa hücum eder. Top, olayın evresine göre pozisyona süzülür.
-import { useMemo } from 'react';
+// Canlı saha: anlatımla eşzamanlı hareket eden top.
+// Ev sahibi soldan sağa hücum eder. Top, GELMEKTE OLAN satırın pozisyonuna
+// satır ekrana düşerken süzülür — metin ve top aynı anda "varır".
 import type { MatchEventType, TeamMatchInfo } from '../types';
-import { isGoalkeeper } from '../types';
 
 export interface BallCue {
   side: 'home' | 'away' | null;
   eventType: MatchEventType | 'penalti-seri' | null;
-  /** Olay içindeki satır sırası ve toplam satır (ilerleme için) */
   idx: number;
   count: number;
   isResult: boolean;
   isGoal: boolean;
-  resultKind: string | null; // EventResult
+  resultKind: string | null;
   minute: number;
 }
 
@@ -29,7 +27,7 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
   else if (cue.eventType === 'kafa') y = 26;
   else if (cue.eventType === 'uzaktan-sut') y = 34;
 
-  // Meta olaylar
+  if (cue.eventType === 'taktik') return { x: 50, y: 31 }; // kenar notu — top santrada bekler
   if (cue.eventType === 'sakatlik' || cue.eventType === 'degisiklik') return { x: 50, y: 58 };
   if (cue.eventType === 'faul') return { x: 50 + dir * 24, y };
   if (cue.eventType === 'penalti') return { x: 50 + dir * 40, y: 31 };
@@ -58,33 +56,9 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
   return { x: 50 + dir * (10 + 34 * progress), y };
 }
 
-function formationDots(team: TeamMatchInfo, mirrored: boolean) {
-  const rows: Record<'GK' | 'DEF' | 'MID' | 'ATK', number> = mirrored
-    ? { GK: 93, DEF: 80, MID: 67, ATK: 55 }
-    : { GK: 7, DEF: 20, MID: 33, ATK: 45 };
-  const byRow: Record<string, number> = {};
-  const grouped: Record<string, typeof team.players> = { GK: [], DEF: [], MID: [], ATK: [] };
-  for (const p of team.players) grouped[p.position]?.push(p);
-  const dots: Array<{ x: number; y: number; gk: boolean; id: string }> = [];
-  (['GK', 'DEF', 'MID', 'ATK'] as const).forEach((row) => {
-    const players = grouped[row];
-    players.forEach((p, i) => {
-      dots.push({
-        x: rows[row],
-        y: ((i + 1) * 62) / (players.length + 1),
-        gk: isGoalkeeper(p),
-        id: p.id,
-      });
-    });
-  });
-  void byRow;
-  return dots;
-}
-
 export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: TeamMatchInfo; cue: BallCue | null }) {
-  const homeDots = useMemo(() => formationDots(home, false), [home, home.players.length]);
-  const awayDots = useMemo(() => formationDots(away, true), [away, away.players.length]);
   const pos = ballPos(cue);
+  const goalDir = cue?.side === 'home' ? 1 : -1;
 
   return (
     <svg viewBox="0 0 100 62" className="w-full news-card" role="img" aria-label="Canlı saha">
@@ -94,31 +68,41 @@ export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: Team
         <rect x="1.5" y="1.5" width="97" height="59" />
         <line x1="50" y1="1.5" x2="50" y2="60.5" />
         <circle cx="50" cy="31" r="7" />
+        <circle cx="50" cy="31" r="0.7" className="fill-ink" opacity="0.5" />
         <rect x="1.5" y="18" width="10" height="26" />
         <rect x="88.5" y="18" width="10" height="26" />
         <line x1="1.5" y1="25" x2="1.5" y2="37" strokeWidth="1.4" />
         <line x1="98.5" y1="25" x2="98.5" y2="37" strokeWidth="1.4" />
       </g>
 
-      {/* diziliş noktaları */}
-      {homeDots.map((d) => (
-        <circle key={d.id} cx={d.x} cy={d.y} r={d.gk ? 2 : 1.7} className="fill-grass" opacity="0.85" />
-      ))}
-      {awayDots.map((d) => (
-        <circle key={d.id} cx={d.x} cy={d.y} r={d.gk ? 2 : 1.7} className="fill-vermil" opacity="0.8" />
-      ))}
+      {/* GOL halkası: ağların önünde patlayan halka */}
+      {cue?.isGoal && (
+        <circle
+          cx={50 + goalDir * 47}
+          cy={31}
+          r="3"
+          fill="none"
+          className="stroke-vermil goal-ring"
+          strokeWidth="1"
+        />
+      )}
 
       {/* top */}
       <g className="live-ball" style={{ transform: `translate(${pos.x}px, ${pos.y}px)` }}>
-        <circle r="1.6" className={cue?.isGoal ? 'fill-vermil ball-goal' : 'fill-paper'} stroke="rgb(var(--ink))" strokeWidth="0.5" />
+        <circle
+          r="1.7"
+          className={cue?.isGoal ? 'fill-vermil ball-goal' : 'fill-paper'}
+          stroke="rgb(var(--ink))"
+          strokeWidth="0.5"
+        />
       </g>
 
-      {/* takım adları */}
+      {/* takım adları — hücum yönleriyle */}
       <text x="3" y="59.2" fontSize="2.6" className="fill-grass-deep font-score" letterSpacing="0.2">
-        {home.teamName.toLocaleUpperCase('tr-TR')}
+        {home.teamName.toLocaleUpperCase('tr-TR')} →
       </text>
       <text x="97" y="4.6" fontSize="2.6" textAnchor="end" className="fill-vermil font-score" letterSpacing="0.2">
-        {away.teamName.toLocaleUpperCase('tr-TR')}
+        ← {away.teamName.toLocaleUpperCase('tr-TR')}
       </text>
     </svg>
   );

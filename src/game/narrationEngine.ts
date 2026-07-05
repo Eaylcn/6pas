@@ -389,6 +389,28 @@ const injuryExitLines: string[] = [
   'Alkışlar eşliğinde {attacker} sahayı terk ediyor.',
 ];
 
+// Taktik kayması: skor durumu değişince kenardan gelen düzen değişikliği
+const tacticShiftBank: Record<string, string[]> = {
+  ofansif: [
+    "{minute}' {team} kenardan gelen işaretle tüm hatlarıyla yüklenmeye başladı!",
+    "{minute}' {team} riski satın aldı: bekler çıkıyor, oyun tek kaleye dönüyor.",
+    "{minute}' {team} sabrı bıraktı; topu her kazandığında ileriye, hep ileriye…",
+  ],
+  defansif: [
+    "{minute}' {team} skoru korumaya aldı; hatlar geriye çekildi, aralar kapandı.",
+    "{minute}' {team} otobüsü ceza sahasının önüne park ediyor.",
+    "{minute}' {team} temposunu düşürdü; topu tutuyor, saati eritiyor.",
+  ],
+  kontra: [
+    "{minute}' {team} tuzağı kurdu: derin blok, ileride tek hedef — boş alan.",
+    "{minute}' {team} geriye yaslandı ama gözü hep rakip savunmanın arkasında.",
+  ],
+  dengeli: [
+    "{minute}' {team} oyunu normale çevirdi; düzen yeniden dengede.",
+    "{minute}' {team} ritmini buldu, oyun karşılıklı dengeye oturdu.",
+  ],
+};
+
 const subBank: string[] = [
   "{minute}' {team} hamlesini yapıyor: {helper} çıkıyor, {attacker} oyuna giriyor.",
   "{minute}' kenardan değişiklik geldi. {attacker}, {helper}'in yerine sahada.",
@@ -442,6 +464,8 @@ export interface NarrationEngine {
   injuryLines(ctx: NarrationContext): string[];
   /** Oyuncu değişikliği satırı (helper=çıkan, attacker=giren) */
   subLines(ctx: NarrationContext): string[];
+  /** Taktik kayması satırı (skor durumu aktif taktiği değiştirdiğinde) */
+  tacticShiftLine(team: string, minute: number, style: string): string;
 }
 
 export function createNarrationEngine(rng: Rng): NarrationEngine {
@@ -565,6 +589,11 @@ export function createNarrationEngine(rng: Rng): NarrationEngine {
 
     subLines(ctx) {
       return [fill(pickFresh(rng, subBank, used), ctx)];
+    },
+
+    tacticShiftLine(team, minute, style) {
+      const bank = tacticShiftBank[style] ?? tacticShiftBank.dengeli;
+      return pickFresh(rng, bank, used).replaceAll('{team}', team).replaceAll('{minute}', String(minute));
     },
   };
 }
