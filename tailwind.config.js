@@ -5,26 +5,26 @@ export default {
     extend: {
       colors: {
         paper: {
-          DEFAULT: '#F4EDDE',
-          soft: '#EFE6D2',
-          deep: '#E7DCC3',
+          DEFAULT: 'rgb(var(--paper) / <alpha-value>)',
+          soft: 'rgb(var(--paper-soft) / <alpha-value>)',
+          deep: 'rgb(var(--paper-deep) / <alpha-value>)',
         },
         ink: {
-          DEFAULT: '#211C16',
-          soft: '#4A4238',
-          faint: '#7A6F5F',
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          soft: 'rgb(var(--ink-soft) / <alpha-value>)',
+          faint: 'rgb(var(--ink-faint) / <alpha-value>)',
         },
         grass: {
-          DEFAULT: '#2D6A4F',
-          deep: '#1F4D39',
+          DEFAULT: 'rgb(var(--grass) / <alpha-value>)',
+          deep: 'rgb(var(--grass-deep) / <alpha-value>)',
         },
         vermil: {
-          DEFAULT: '#B3401E',
-          deep: '#8E2F12',
+          DEFAULT: 'rgb(var(--vermil) / <alpha-value>)',
+          deep: 'rgb(var(--vermil-deep) / <alpha-value>)',
         },
         gold: {
-          DEFAULT: '#B08A2E',
-          foil: '#D4AF37',
+          DEFAULT: 'rgb(var(--gold) / <alpha-value>)',
+          foil: 'rgb(var(--gold-foil) / <alpha-value>)',
         },
         rarity: {
           common: '#7A7266',
@@ -41,8 +41,8 @@ export default {
         body: ['"Source Sans 3"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '2px 2px 0 rgba(33,28,22,0.18)',
-        foil: '0 0 0 1px #D4AF37, 0 0 14px rgba(212,175,55,0.45)',
+        card: '2px 2px 0 rgb(var(--ink) / 0.18)',
+        foil: '0 0 0 1px rgb(var(--gold-foil)), 0 0 14px rgb(var(--gold-foil) / 0.45)',
       },
     },
   },

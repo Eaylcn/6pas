@@ -1,5 +1,19 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { t } from '../i18n';
+import { getActiveTheme, toggleTheme, type ThemeName } from '../app/theme';
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<ThemeName>(() => getActiveTheme());
+  return (
+    <button
+      className="uppercase tracking-widest hover:text-ink transition-colors"
+      title={theme === 'dark' ? 'Gündüz Baskısına geç' : 'Gece Baskısına geç'}
+      onClick={() => setTheme(toggleTheme())}
+    >
+      {theme === 'dark' ? '☀ Gündüz Baskısı' : '☾ Gece Baskısı'}
+    </button>
+  );
+}
 
 /** Gazete sayfası çerçevesi: manşet başlığı + tarih satırı + içerik */
 export function NewspaperShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
@@ -13,10 +27,10 @@ export function NewspaperShell({ children, wide }: { children: ReactNode; wide?:
   return (
     <div className={`mx-auto px-4 py-6 ${wide ? 'max-w-6xl' : 'max-w-4xl'}`}>
       <header className="text-center mb-6">
-        <div className="flex items-center justify-between text-[11px] font-score uppercase tracking-widest text-ink-soft border-b border-ink/40 pb-1">
+        <div className="flex items-center justify-between gap-2 text-[11px] font-score uppercase tracking-widest text-ink-soft border-b border-ink/40 pb-1">
           <span>{t('app.edition')}</span>
-          <span>{today}</span>
-          <span>Sayı No. 6</span>
+          <span className="hidden sm:inline">{today}</span>
+          <ThemeToggle />
         </div>
         <h1 className="masthead-title text-4xl sm:text-5xl mt-3 mb-2">{t('app.title')}</h1>
         <div className="rule-double py-1 text-xs font-score uppercase tracking-[0.3em] text-ink-soft">

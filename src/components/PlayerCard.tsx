@@ -10,6 +10,12 @@ interface Props {
   onClick?: () => void;
   compact?: boolean;
   actionLabel?: string;
+  /** Stat değerlerinin altında mini çubuklar (draft aday karşılaştırması) */
+  statBars?: boolean;
+  /** Bu oyuncu seçilirse takım kimyası kaç puan değişir (draft) */
+  chemDelta?: number | null;
+  /** İkon kart açılış parlaması */
+  revealIcon?: boolean;
 }
 
 /** Stat kısaltmalarının açıklamaları (dokun/üzerine gel) */
@@ -22,7 +28,16 @@ const statTitles: Record<string, string> = {
   DAĞ: 'Dağıtım: oyun kurma, uzun top, kontra başlatma',
 };
 
-export function PlayerCard({ player, isCaptain, onClick, compact, actionLabel }: Props) {
+export function PlayerCard({
+  player,
+  isCaptain,
+  onClick,
+  compact,
+  actionLabel,
+  statBars,
+  chemDelta,
+  revealIcon,
+}: Props) {
   const stats = isGoalkeeper(player)
     ? [
         ['REF', player.ref],
@@ -37,13 +52,23 @@ export function PlayerCard({ player, isCaptain, onClick, compact, actionLabel }:
 
   const frame = player.isIcon ? 'icon-foil' : 'news-card';
   const clickable = onClick ? 'news-card-clickable' : '';
+  const reveal = revealIcon && player.isIcon ? 'icon-reveal' : '';
 
   return (
     <div
-      className={`${frame} ${clickable} relative p-3 flex flex-col gap-2`}
+      className={`${frame} ${clickable} ${reveal} relative p-3 flex flex-col gap-2`}
       style={{ borderLeft: `6px solid ${rarityColor(player.rarity)}` }}
       onClick={onClick}
     >
+      {chemDelta != null && (
+        <span
+          className={`absolute -top-2 right-2 tag-label font-bold ${
+            chemDelta > 0 ? 'bg-grass text-paper border-grass' : 'bg-paper-deep'
+          }`}
+        >
+          Kimya {chemDelta > 0 ? `+${chemDelta}` : '±0'}
+        </span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -65,11 +90,21 @@ export function PlayerCard({ player, isCaptain, onClick, compact, actionLabel }:
         <>
           <div className="flex gap-3 rule-top pt-1.5">
             {stats.map(([label, value]) => (
-              <div key={label as string} className="flex items-baseline gap-1" title={statTitles[label as string]}>
-                <span className="text-[10px] font-score uppercase tracking-widest text-ink-faint border-b border-dotted border-ink/40">
-                  {label}
-                </span>
-                <span className="font-score font-bold text-base">{value}</span>
+              <div key={label as string} className="flex-1" title={statTitles[label as string]}>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[10px] font-score uppercase tracking-widest text-ink-faint border-b border-dotted border-ink/40">
+                    {label}
+                  </span>
+                  <span className="font-score font-bold text-base">{value}</span>
+                </div>
+                {statBars && (
+                  <div className="h-1 bg-paper-deep border border-ink/20 mt-0.5">
+                    <div
+                      className={`h-full ${(value as number) >= 80 ? 'bg-grass' : (value as number) >= 65 ? 'bg-gold' : 'bg-ink/40'}`}
+                      style={{ width: `${Math.min(100, ((value as number) / 99) * 100)}%` }}
+                    />
+                  </div>
+                )}
               </div>
             ))}
             <div className="ml-auto">

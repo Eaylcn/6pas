@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import { t } from '../i18n';
-import { getFormation } from '../data';
+import { getFormation, getPlayer } from '../data';
 import { SectionHeadline } from '../components/NewspaperShell';
-import { TeamPanel } from '../components/TeamPanel';
+import { PlayerCard } from '../components/PlayerCard';
 import { ChemistryPanel } from '../components/ChemistryPanel';
+import { PitchView, ChemistryLegend, type PitchSlotView } from '../components/PitchView';
 import { calculateTeamPower } from '../game/matchEngine';
 import { useGameStore } from '../store/useGameStore';
-import { getPlayer } from '../data';
-import type { TeamMatchInfo } from '../types';
+import type { AnyPlayer, TeamMatchInfo } from '../types';
 
 export function SquadReviewScreen() {
   const { run, findMatch, goto } = useGameStore();
+  const [inspected, setInspected] = useState<AnyPlayer | null>(null);
   if (!run) return null;
 
   const players = run.squad.filter((s) => s.playerId).map((s) => getPlayer(s.playerId!));
@@ -29,6 +31,9 @@ export function SquadReviewScreen() {
   team.power = calculateTeamPower(team);
   const formation = getFormation(run.formationId);
 
+  const pitchSlots: PitchSlotView[] = players.map((p) => ({ id: p.id, position: p.position, player: p }));
+  const pitchBench: PitchSlotView[] = bench.map((p) => ({ id: p.id, position: p.position, player: p }));
+
   return (
     <div>
       <SectionHeadline sub={t('review.editNote')}>{run.teamName}</SectionHeadline>
@@ -40,9 +45,24 @@ export function SquadReviewScreen() {
         <Info label={t('common.streak')} value={run.streak} />
       </div>
 
-      <div className="grid md:grid-cols-[1fr_280px] gap-5">
-        <TeamPanel team={team} />
+      <div className="grid md:grid-cols-[minmax(280px,400px)_1fr] gap-6">
+        <div className="space-y-3">
+          <PitchView
+            slots={pitchSlots}
+            bench={pitchBench}
+            captainId={run.captainId}
+            onSelectPlayer={setInspected}
+          />
+          <ChemistryLegend />
+        </div>
         <div className="space-y-4">
+          {inspected ? (
+            <PlayerCard player={inspected} isCaptain={inspected.id === run.captainId} />
+          ) : (
+            <div className="news-card p-4 text-sm italic text-ink-soft text-center">
+              Sahadaki bir jetona dokun: kartı ve kimya bağları burada açılır.
+            </div>
+          )}
           <ChemistryPanel chemistry={run.chemistry} />
           <div className="news-card p-3 text-xs space-y-1">
             <div className="tag-label mb-1">{t('common.tacticalPlan')}</div>

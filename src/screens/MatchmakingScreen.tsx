@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { SectionHeadline } from '../components/NewspaperShell';
-import { TeamPanel } from '../components/TeamPanel';
+import { PitchView, type PitchSlotView } from '../components/PitchView';
 import { useGameStore } from '../store/useGameStore';
 
 export function MatchmakingScreen() {
@@ -21,6 +21,9 @@ export function MatchmakingScreen() {
     );
   }
 
+  const pitchSlots: PitchSlotView[] = opponent.players.map((p) => ({ id: p.id, position: p.position, player: p }));
+  const pitchBench: PitchSlotView[] = opponent.bench.map((p) => ({ id: p.id, position: p.position, player: p }));
+
   return (
     <div className="max-w-2xl mx-auto">
       <SectionHeadline sub={t('matchmaking.vs')}>{t('matchmaking.found')}</SectionHeadline>
@@ -29,11 +32,12 @@ export function MatchmakingScreen() {
         <span className="font-score text-ink-soft mx-3 text-lg">—</span>
         <span className="font-headline font-bold text-xl">{opponent.teamName}</span>
         <div className="text-[11px] font-score uppercase tracking-widest text-ink-soft mt-1">
-          {t('common.teamPower')}: {opponent.power}
+          {t('common.teamPower')}: {opponent.power} · {t('common.chemistry')}: {opponent.chemistry.score}
         </div>
       </div>
-      <div className="mb-5 max-h-[380px] overflow-y-auto news-card p-4">
-        <TeamPanel team={opponent} compact />
+      <div className="news-card p-4 mb-5">
+        <div className="tag-label mb-2">Rakip Dizilişi — {opponent.formationId}</div>
+        <PitchView slots={pitchSlots} bench={pitchBench} captainId={opponent.captainId} showChemistry={false} />
       </div>
       <button className="btn-press w-full text-lg" onClick={startMatch}>
         {t('matchmaking.startMatch')}

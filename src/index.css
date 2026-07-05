@@ -2,25 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- Tema token'ları (RGB triplet — Tailwind alpha desteği için) ---- */
+
+:root {
+  /* Gündüz Baskısı */
+  --paper: 244 237 222;
+  --paper-soft: 239 230 210;
+  --paper-deep: 231 220 195;
+  --ink: 33 28 22;
+  --ink-soft: 74 66 56;
+  --ink-faint: 122 111 95;
+  --grass: 45 106 79;
+  --grass-deep: 31 77 57;
+  --vermil: 179 64 30;
+  --vermil-deep: 142 47 18;
+  --gold: 176 138 46;
+  --gold-foil: 212 175 55;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: 23 20 15;
+    --paper-soft: 30 26 20;
+    --paper-deep: 40 34 26;
+    --ink: 237 228 210;
+    --ink-soft: 201 188 164;
+    --ink-faint: 148 136 111;
+    --grass: 95 174 136;
+    --grass-deep: 127 199 164;
+    --vermil: 224 106 69;
+    --vermil-deep: 196 85 47;
+    --gold: 201 163 74;
+    --gold-foil: 227 192 92;
+  }
+}
+
+/* Kullanıcı seçimi sistem tercihini iki yönde de ezer */
+:root[data-theme='light'] {
+  --paper: 244 237 222;
+  --paper-soft: 239 230 210;
+  --paper-deep: 231 220 195;
+  --ink: 33 28 22;
+  --ink-soft: 74 66 56;
+  --ink-faint: 122 111 95;
+  --grass: 45 106 79;
+  --grass-deep: 31 77 57;
+  --vermil: 179 64 30;
+  --vermil-deep: 142 47 18;
+  --gold: 176 138 46;
+  --gold-foil: 212 175 55;
+}
+
+:root[data-theme='dark'] {
+  --paper: 23 20 15;
+  --paper-soft: 30 26 20;
+  --paper-deep: 40 34 26;
+  --ink: 237 228 210;
+  --ink-soft: 201 188 164;
+  --ink-faint: 148 136 111;
+  --grass: 95 174 136;
+  --grass-deep: 127 199 164;
+  --vermil: 224 106 69;
+  --vermil-deep: 196 85 47;
+  --gold: 201 163 74;
+  --gold-foil: 227 192 92;
+}
+
 /* ---- Retro Futbol Gazetesi teması ---- */
 
 body {
   @apply bg-paper text-ink font-body;
   background-image:
-    radial-gradient(ellipse at 20% 10%, rgba(33, 28, 22, 0.04), transparent 55%),
-    radial-gradient(ellipse at 85% 90%, rgba(33, 28, 22, 0.05), transparent 50%),
-    repeating-linear-gradient(0deg, rgba(33, 28, 22, 0.015) 0 1px, transparent 1px 3px);
+    radial-gradient(ellipse at 20% 10%, rgb(var(--ink) / 0.04), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgb(var(--ink) / 0.05), transparent 50%),
+    repeating-linear-gradient(0deg, rgb(var(--ink) / 0.015) 0 1px, transparent 1px 3px);
   min-height: 100vh;
 }
 
 /* Gazete cetvelleri */
 .rule-double {
-  border-top: 3px double #211c16;
-  border-bottom: 3px double #211c16;
+  border-top: 3px double rgb(var(--ink));
+  border-bottom: 3px double rgb(var(--ink));
 }
 
 .rule-top {
-  border-top: 1px solid rgba(33, 28, 22, 0.55);
+  border-top: 1px solid rgb(var(--ink) / 0.55);
 }
 
 .headline {
@@ -36,12 +102,13 @@ body {
 .scoreboard-digit {
   @apply font-score font-bold bg-ink text-paper px-2 py-0.5 rounded-sm inline-block;
   font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 -2px 0 rgba(244, 237, 222, 0.15);
+  box-shadow: inset 0 -2px 0 rgb(var(--paper) / 0.15);
 }
 
 /* Kart çerçeveleri */
 .news-card {
-  @apply bg-paper-soft border border-ink/60 shadow-card;
+  @apply bg-paper-soft border border-ink/60;
+  box-shadow: 2px 2px 0 rgb(var(--ink) / 0.18);
 }
 
 .news-card-clickable {
@@ -49,22 +116,44 @@ body {
 }
 .news-card-clickable:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 rgba(33, 28, 22, 0.25);
+  box-shadow: 3px 3px 0 rgb(var(--ink) / 0.25);
 }
 
 /* İkon kart: altın varak baskı hissi */
 .icon-foil {
-  border: 2px solid #d4af37;
+  border: 2px solid rgb(var(--gold-foil));
   background:
-    linear-gradient(135deg, rgba(212, 175, 55, 0.12), transparent 40%, rgba(212, 175, 55, 0.1)),
-    #f2e8ce;
+    linear-gradient(135deg, rgb(var(--gold-foil) / 0.14), transparent 40%, rgb(var(--gold-foil) / 0.12)),
+    rgb(var(--paper-deep));
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.7),
-    2px 2px 0 rgba(33, 28, 22, 0.2),
-    0 0 16px rgba(212, 175, 55, 0.35);
+    0 0 0 1px rgb(var(--gold-foil) / 0.7),
+    2px 2px 0 rgb(var(--ink) / 0.2),
+    0 0 16px rgb(var(--gold-foil) / 0.35);
 }
 
-/* Rarity sol şerit renkleri PlayerCard içinde inline uygulanır */
+/* İkon aday açılış parlaması */
+@keyframes foilReveal {
+  0% {
+    box-shadow: 0 0 0 1px rgb(var(--gold-foil) / 0.7), 0 0 4px rgb(var(--gold-foil) / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgb(var(--gold-foil)), 0 0 26px rgb(var(--gold-foil) / 0.75);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(var(--gold-foil) / 0.7),
+      2px 2px 0 rgb(var(--ink) / 0.2),
+      0 0 16px rgb(var(--gold-foil) / 0.35);
+  }
+}
+.icon-reveal {
+  animation: foilReveal 1.1s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-reveal {
+    animation: none;
+  }
+}
 
 /* Maç sütunu satır animasyonu */
 @keyframes lineIn {
@@ -80,10 +169,43 @@ body {
 .line-in {
   animation: lineIn 0.35s ease-out both;
 }
+@media (prefers-reduced-motion: reduce) {
+  .line-in {
+    animation: none;
+  }
+}
 
 .goal-headline {
   @apply font-headline font-black text-vermil uppercase;
-  text-shadow: 1px 1px 0 rgba(33, 28, 22, 0.15);
+  text-shadow: 1px 1px 0 rgb(var(--ink) / 0.15);
+}
+
+/* GOOOL bandı */
+@keyframes goalBand {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  12% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  85% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+.goal-band {
+  animation: goalBand 1.6s ease-in-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-band {
+    animation: none;
+  }
 }
 
 /* Buton dili: gazete ilanı düğmesi */
@@ -91,7 +213,7 @@ body {
   @apply inline-block border-2 border-ink bg-ink text-paper font-headline font-bold uppercase tracking-wider px-5 py-2.5 transition-all duration-100 select-none;
 }
 .btn-press:hover:not(:disabled) {
-  @apply bg-grass-deep border-grass-deep;
+  @apply bg-grass-deep border-grass-deep text-paper;
 }
 .btn-press:disabled {
   @apply opacity-40 cursor-not-allowed;
