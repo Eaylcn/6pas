@@ -4,6 +4,7 @@ import { SectionHeadline } from '../components/NewspaperShell';
 import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
 import { getClippings, type MatchClipping } from '../services/historyService';
+import { isRealModeEnabled, setRealMode } from '../data/realMode';
 
 export function HomeDashboard() {
   const user = useUserStore((s) => s.user);
@@ -54,6 +55,21 @@ export function HomeDashboard() {
       <button className="btn-outline w-full" onClick={() => goto('leaderboard')}>
         {t('home.leaderboard')}
       </button>
+
+      {isRealModeEnabled() && (
+        <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft">
+          <span>⭐ Gerçek Yıldızlar Modu açık</span>
+          <button
+            className="underline hover:text-ink"
+            onClick={() => {
+              setRealMode(false);
+              window.location.reload();
+            }}
+          >
+            Kapat
+          </button>
+        </div>
+      )}
 
       {clippings.length > 0 && (
         <div className="mt-6">

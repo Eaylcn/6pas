@@ -164,7 +164,7 @@ function bandOf(rarity: Rarity): RarityBand {
 
 function pickIdentity(rng: Rng, usedNames: Set<string>) {
   const nations = Object.keys(nameBanks);
-  for (let attempt = 0; attempt < 50; attempt++) {
+  for (let attempt = 0; attempt < 120; attempt++) {
     const nationality = rng.pick(nations);
     const bank = nameBanks[nationality];
     const name = `${rng.pick(bank.first)} ${rng.pick(bank.last)}`;
@@ -206,19 +206,19 @@ function statSpread(rng: Rng, position: FieldPosition, ovr: number) {
 
 /** Pozisyon başına üretilecek adetler (icon'lar elle küratörlü, burada yok) */
 const fieldCounts: Array<[Rarity, number]> = [
-  ['common', 22],
-  ['solid', 16],
-  ['pro', 13],
-  ['star', 8],
-  ['legend', 4],
+  ['common', 34],
+  ['solid', 25],
+  ['pro', 20],
+  ['star', 12],
+  ['legend', 6],
 ];
 
 const gkCounts: Array<[Rarity, number]> = [
-  ['common', 14],
-  ['solid', 10],
-  ['pro', 8],
-  ['star', 6],
-  ['legend', 4],
+  ['common', 20],
+  ['solid', 15],
+  ['pro', 12],
+  ['star', 8],
+  ['legend', 6],
 ];
 
 export function generateFieldPlayers(seed: number, usedNames: Set<string>): FieldPlayer[] {

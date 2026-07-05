@@ -155,6 +155,31 @@ body {
   }
 }
 
+/* Canlı saha topu */
+.live-ball {
+  transition: transform 700ms cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+@keyframes ballGoal {
+  0%,
+  100% {
+    r: 1.6;
+  }
+  50% {
+    r: 2.6;
+  }
+}
+.ball-goal {
+  animation: ballGoal 0.5s ease-in-out 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-ball {
+    transition: none;
+  }
+  .ball-goal {
+    animation: none;
+  }
+}
+
 /* Maç sütunu satır animasyonu */
 @keyframes lineIn {
   from {

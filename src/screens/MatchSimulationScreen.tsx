@@ -4,6 +4,7 @@ import { isGoalkeeper } from '../types';
 import { getPlayer, getPerk } from '../data';
 import { t } from '../i18n';
 import { Scoreboard } from '../components/Scoreboard';
+import { LivePitch, type BallCue } from '../components/LivePitch';
 import { StylePicker } from './TacticsSetupScreen';
 import {
   totalLines,
@@ -28,6 +29,8 @@ interface FlatLine {
   side: 'home' | 'away' | null;
   /** Olay bloğunun ilk satırı (takım etiketi buraya basılır) */
   isEventStart: boolean;
+  /** Canlı saha topu için ipucu */
+  cue: BallCue;
 }
 
 function resultIcon(e: MatchEvent, lineIndex: number, lineCount: number): string | null {
@@ -93,11 +96,21 @@ function buildLines(session: MatchSession): FlatLine[] {
         perkNote: isLast ? perkNoteOf(e) : null,
         side: e.attackingTeam,
         isEventStart: i === 0,
+        cue: {
+          side: e.attackingTeam,
+          eventType: e.type,
+          idx: i,
+          count: e.textLines.length,
+          isResult: isLast,
+          isGoal: isLast && e.result === 'goal',
+          resultKind: isLast ? e.result : null,
+          minute: e.minute,
+        },
       });
     });
   }
   if (session.penalties) {
-    for (const l of session.penalties.lines) {
+    session.penalties.lines.forEach((l, i) => {
       lines.push({
         text: l.text,
         minute: 70,
@@ -109,8 +122,18 @@ function buildLines(session: MatchSession): FlatLine[] {
         perkNote: null,
         side: null,
         isEventStart: false,
+        cue: {
+          side: null,
+          eventType: 'penalti-seri',
+          idx: i,
+          count: session.penalties!.lines.length,
+          isResult: l.emphasis !== 'suspense' && l.emphasis !== 'normal',
+          isGoal: l.emphasis === 'goal',
+          resultKind: l.emphasis === 'goal' ? 'goal' : l.emphasis === 'save' ? 'save' : null,
+          minute: 70,
+        },
       });
-    }
+    });
   }
   return lines;
 }
@@ -426,6 +449,11 @@ export function MatchSimulationScreen() {
           </div>
         </div>
       )}
+
+      {/* Canlı saha: top anlatımla senkron süzülür */}
+      <div className="mt-2">
+        <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={last?.cue ?? null} />
+      </div>
 
       <Timeline events={revealed} minute={minute} />
 
