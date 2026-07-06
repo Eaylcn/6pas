@@ -20,7 +20,8 @@ export const goalkeepers = realMode ? realGoalkeepers : fakeGoalkeepers;
 
 export const allPlayers: AnyPlayer[] = [...fieldPlayers, ...goalkeepers];
 
-// Denge kuralı: bir oyuncuda en fazla 2 perk (belirginlik + denge)
+// Denge kuralı: bir oyuncuda en fazla 2 perk (imza listeleri de bu tavana iner);
+// perk sayısı güce/nadirliğe göre dağıtılır, alt kademede perksiz oyuncular vardır.
 for (const p of [...fakeFieldPlayers, ...fakeGoalkeepers, ...realFieldPlayers, ...realGoalkeepers]) {
   if (p.perks.length > 2) p.perks = p.perks.slice(0, 2);
 }

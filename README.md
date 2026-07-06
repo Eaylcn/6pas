@@ -36,10 +36,11 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - **Gerginlik/kavga** olayları (💢) · Ghost rakibin taktiksel oto değişikliği
 - 3 değişiklik hakkı: devre arası + **maç içi "Kenara Talimat"** (duraklat → değişiklik/taktik)
 - Taktik kaymaları anlatıma "📋 kenar notu" düşer; skorbord altında aktif taktikler
-- Perk maks **2/oyuncu**; tetiklenince "✍ Muhabir notu: {perk} imzası — {oyuncu}"
+- **Perkler güce/nadirliğe göre dağılır** (tavan 2): sıradan oyuncular çoğunlukla perksiz, pro 1, yıldız 1-2, efsane/ikon 2; tetiklenince "✍ Muhabir notu: {perk} imzası — {oyuncu}"
 
 ### Maç ekranı
-- **Canlı saha**: top anlatımla eşzamanlı süzülür (golde metinle birlikte ağlara); penaltılarda **kaleci köşeye uçar**, topun köşesi görünür
+- **Canlı saha**: top anlatımla eşzamanlı süzülür (golde metinle birlikte ağlara, poz sonraki satıra dek ekranda kalır)
+- Penaltılarda (maç içi + seri) **önden kale sahnesi**: direkler + ağ + penaltı noktası; eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalakalır, kaçan top üstten auta gider
 - **Maç saati dakika dakika ilerler**, olaylar dakikası gelince düşer
 - **Canlı kadro panelleri**: PC'de sağ/sol, mobilde altta — oyuncular **anlık reytingleriyle** (SofaScore tarzı)
 - Timeline (⚽🟨🟥⚕🔁💢), golcü listesi ((P)/(SV) imli), momentum ibresi, GOOOL bandı + gol kupürü, takım etiketli/renk şeritli satırlar, TD isimleri, hız 1x/2x + dokun-ilerle + ileri sar
@@ -56,7 +57,7 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - 🗑 Ana sayfada **debug sıfırlama** (iki aşamalı onay, tüm veriyi siler)
 
 ### Denge (1000 maç, kalibre)
-~2.4 gol/maç · skorlar çoğunlukla 1-0/0-0/2-0/2-1 · 7+ gol <%1 · penaltı dönüşümü ~%80 · sarı 0.8/maç · kırmızı ~%5 · sakatlık ~%10 · uzatma ~%32, seri penaltı ~%25
+~2.3 gol/maç · skorlar çoğunlukla 1-0/0-0/2-1/2-0 · 7+ gol <%1 · kurtarış ~2.1/maç, kaçan şut ~2.3/maç (kaçan > kurtarış) · penaltı dönüşümü ~%78 · sarı 0.8/maç · kırmızı ~%5 · sakatlık ~%7 · uzatma ~%33, seri penaltı ~%28
 
 ## Mimari
 

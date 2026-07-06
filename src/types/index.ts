@@ -254,7 +254,7 @@ export interface WeatherModifier {
 
 export interface PenaltyKickLine {
   text: string;
-  emphasis: 'normal' | 'suspense' | 'goal' | 'save';
+  emphasis: 'normal' | 'suspense' | 'goal' | 'save' | 'miss';
   /** Vuruşu kullanan taraf — canlı saha ve takım etiketi için */
   side?: 'home' | 'away';
 }

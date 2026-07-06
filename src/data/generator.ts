@@ -149,13 +149,15 @@ interface RarityBand {
   perkMax: number;
 }
 
+// Perk sayısı güce/nadirliğe göre: sıradan oyuncular çoğunlukla perksizdir,
+// yıldızlar 2 perkle gelir (oyun genelinde tavan 2).
 export const rarityBands: RarityBand[] = [
   { rarity: 'common', min: 55, max: 65, perkMin: 0, perkMax: 1 },
   { rarity: 'solid', min: 63, max: 72, perkMin: 0, perkMax: 1 },
-  { rarity: 'pro', min: 70, max: 79, perkMin: 1, perkMax: 2 },
-  { rarity: 'star', min: 78, max: 86, perkMin: 2, perkMax: 3 },
-  { rarity: 'legend', min: 85, max: 91, perkMin: 3, perkMax: 4 },
-  { rarity: 'icon', min: 90, max: 96, perkMin: 3, perkMax: 4 },
+  { rarity: 'pro', min: 70, max: 79, perkMin: 1, perkMax: 1 },
+  { rarity: 'star', min: 78, max: 86, perkMin: 1, perkMax: 2 },
+  { rarity: 'legend', min: 85, max: 91, perkMin: 2, perkMax: 2 },
+  { rarity: 'icon', min: 90, max: 96, perkMin: 2, perkMax: 2 },
 ];
 
 function bandOf(rarity: Rarity): RarityBand {
@@ -185,7 +187,9 @@ function pickIdentity(rng: Rng, usedNames: Set<string>) {
 }
 
 function pickPerks(rng: Rng, position: FieldPosition | 'GK', band: RarityBand): string[] {
-  const count = rng.int(band.perkMin, band.perkMax);
+  let count = rng.int(band.perkMin, band.perkMax);
+  // Kademe hissi: common'ların çoğu perksiz kalsın (~%75), solid yarı yarıya
+  if (band.rarity === 'common' && count > 0 && rng.chance(0.5)) count = 0;
   if (count === 0) return [];
   const pool = perksForPosition(position);
   const weighted = pool.flatMap((p) => Array(Math.round(p.rarityWeight * 10)).fill(p.id) as string[]);

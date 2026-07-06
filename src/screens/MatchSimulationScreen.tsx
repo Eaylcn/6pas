@@ -146,6 +146,7 @@ function buildLines(session: MatchSession): FlatLine[] {
           isGoal: isLast && e.result === 'goal',
           resultKind: isLast ? e.result : null,
           minute: e.minute,
+          seq: i,
         },
       });
     });
@@ -157,9 +158,9 @@ function buildLines(session: MatchSession): FlatLine[] {
         minute: 70,
         score,
         isGoal: l.emphasis === 'goal',
-        isResult: l.emphasis === 'goal' || l.emphasis === 'save',
+        isResult: l.emphasis === 'goal' || l.emphasis === 'save' || l.emphasis === 'miss',
         isSuspense: l.emphasis === 'suspense',
-        icon: l.emphasis === 'goal' ? '⚽' : l.emphasis === 'save' ? '🧤' : null,
+        icon: l.emphasis === 'goal' ? '⚽' : l.emphasis === 'save' ? '🧤' : l.emphasis === 'miss' ? '💨' : null,
         perkNote: null,
         side: l.side ?? null,
         isEventStart: l.emphasis === 'normal', // her vuruşun ilk satırı
@@ -169,10 +170,11 @@ function buildLines(session: MatchSession): FlatLine[] {
           // Vuruş evresi: normal=yaklaşma, suspense=nokta, sonuç=vuruş
           idx: l.emphasis === 'normal' ? 0 : l.emphasis === 'suspense' ? 1 : 2,
           count: 3,
-          isResult: l.emphasis === 'goal' || l.emphasis === 'save',
+          isResult: l.emphasis === 'goal' || l.emphasis === 'save' || l.emphasis === 'miss',
           isGoal: l.emphasis === 'goal',
-          resultKind: l.emphasis === 'goal' ? 'goal' : l.emphasis === 'save' ? 'save' : null,
+          resultKind: l.emphasis === 'goal' ? 'goal' : l.emphasis === 'save' ? 'save' : l.emphasis === 'miss' ? 'miss' : null,
           minute: 70,
+          seq: i,
         },
       });
     });
@@ -467,10 +469,11 @@ export function MatchSimulationScreen() {
 
   const last = visible[visible.length - 1];
   // Gol koreografisi: hazırlık satırlarında top ÖNDEN pozisyon alır (gelen satır),
-  // sonuç satırlarında (gol/kurtarış) top METİNLE BİRLİKTE varır — spiker "gol"
-  // derken top ağlara girer, animasyon ve anlatım eşzamanlı olur.
+  // sonuç satırlarında (gol/kurtarış) top METİNLE BİRLİKTE varır ve poz, sonraki
+  // satır düşene dek EKRANDA KALIR — spiker "gol" derken top ağlara girer, sahne
+  // hemen bir sonraki pozisyona sıçramaz (seri penaltıda vuruş anı görünür kalsın).
   const upcomingLine = lines[cursor];
-  const cueLine = upcomingLine && !upcomingLine.cue.isResult ? upcomingLine : last;
+  const cueLine = last?.isResult ? last : upcomingLine && !upcomingLine.cue.isResult ? upcomingLine : last;
   const score = last?.score ?? [session.sim.home.goals, session.sim.away.goals];
   const minute = phase === 'PENS' ? 70 : Math.max(clock, last?.minute ?? PHASE_START[phase]);
   const revealed = revealedEvents(session, cursor);

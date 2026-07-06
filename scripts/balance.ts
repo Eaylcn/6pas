@@ -30,6 +30,9 @@ let freeKicks = 0;
 let fkGoals = 0;
 let penGoals = 0;
 let autoSubs = 0;
+let saves = 0;
+let misses = 0;
+let blocks = 0;
 const goalCounts: number[] = [];
 
 for (let m = 0; m < MATCHES; m++) {
@@ -61,6 +64,9 @@ for (let m = 0; m < MATCHES; m++) {
   goalCounts.push(score[0] + score[1]);
   totalEvents += events.length;
   totalShots += events.filter((e) => ['goal', 'save', 'miss'].includes(e.result)).length;
+  saves += events.filter((e) => e.result === 'save').length;
+  misses += events.filter((e) => e.result === 'miss').length;
+  blocks += events.filter((e) => e.result === 'blocked' || e.result === 'defended').length;
   acrobatics += events.filter((e) => e.type === 'rovasata' || e.type === 'rabona').length;
   perkTriggers += events.filter((e) => e.hiddenPerksTriggered.length > 0).length;
   fouls += events.filter((e) => e.type === 'faul').length;
@@ -77,6 +83,9 @@ for (let m = 0; m < MATCHES; m++) {
 console.log(`Maç sayısı: ${MATCHES}`);
 console.log(`Ortalama gol/maç: ${(totalGoals / MATCHES).toFixed(2)}`);
 console.log(`Ortalama şut/maç: ${(totalShots / MATCHES).toFixed(2)}`);
+console.log(
+  `Kurtarış/maç: ${(saves / MATCHES).toFixed(2)} · Kaçan/maç: ${(misses / MATCHES).toFixed(2)} · Blok+müdahale/maç: ${(blocks / MATCHES).toFixed(2)}`,
+);
 console.log(`Ortalama önemli an/maç: ${(totalEvents / MATCHES).toFixed(2)}`);
 console.log(`Uzatmaya giden: %${((extraTimes / MATCHES) * 100).toFixed(1)} · Penaltılara giden: %${((shootouts / MATCHES) * 100).toFixed(1)}`);
 console.log(`Faul/maç: ${(fouls / MATCHES).toFixed(2)} · Sarı/maç: ${(yellows / MATCHES).toFixed(2)} · Kırmızı: %${((reds / MATCHES) * 100).toFixed(1)} maç`);

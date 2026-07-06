@@ -141,6 +141,9 @@ export function PlayerCard({
                 ))}
               </div>
             ))}
+          {player.perks.length === 0 && detailed && (
+            <p className="text-xs text-ink-faint rule-top pt-1.5">İmza hareketi yok — sade ama güvenilir bir profil.</p>
+          )}
 
           <p className="text-xs italic text-ink-faint leading-snug">“{player.flavorText}”</p>
           {isCaptain && player.captainTrait && (

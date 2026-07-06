@@ -343,7 +343,15 @@ function hashOf(text: string): number {
   return h >>> 0;
 }
 
-const perkCountByRarity: Record<Rarity, number> = { common: 1, solid: 1, pro: 2, star: 2, legend: 3, icon: 4 };
+// Perk aralığı güce/nadirliğe göre — alt kademe oyuncular perksiz kalabilir (tavan 2)
+const perkRangeByRarity: Record<Rarity, [number, number]> = {
+  common: [0, 0],
+  solid: [0, 1],
+  pro: [1, 1],
+  star: [1, 2],
+  legend: [2, 2],
+  icon: [2, 2],
+};
 
 const flavors = [
   'Sahaya çıktığında tribün başka konuşur.',
@@ -373,7 +381,9 @@ function buildPlayer(row: Row, clubId: string): FieldPlayer | Goalkeeper {
     signaturePerks[name] ??
     (() => {
       const pool = perksForPosition(pos);
-      const count = perkCountByRarity[rarity];
+      const [pMin, pMax] = perkRangeByRarity[rarity];
+      const count = rng.int(pMin, pMax);
+      if (count === 0) return [];
       const picked = new Set<string>();
       let guard = 0;
       while (picked.size < count && guard < 60) {

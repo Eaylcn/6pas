@@ -325,7 +325,7 @@ function buildFreeKickEvent(ctx: DuelContext): MatchEvent {
     rolls.push({ label: 'kaleci', value: gkRoll });
     const gkScore = gk.ref + GK_EDGE + 7 + gkRoll;
     const margin = fkScore - gkScore;
-    result = margin > GOAL_MARGIN ? 'goal' : margin > -4 ? 'save' : rng.chance(0.5) ? 'miss' : 'save';
+    result = margin > GOAL_MARGIN ? 'goal' : margin > -3 ? 'save' : rng.chance(0.6) ? 'miss' : 'save';
   } else {
     result = 'goal';
   }
@@ -637,11 +637,12 @@ function resolveDuelChain(ctx: DuelContext): MatchEvent[] {
       const shotMargin = shotScore - gkScore;
       if (shotMargin > GOAL_MARGIN) {
         result = 'goal';
-      } else if (shotMargin > -4) {
+      } else if (shotMargin > -3) {
         result = 'save';
         hints.push(...gkPerks.hints);
       } else {
-        result = rng.chance(0.55) ? 'miss' : 'save';
+        // Kaçırma ağırlıklı: her kapanan pozisyon kalecinin hanesine yazılmasın
+        result = rng.chance(0.65) ? 'miss' : 'save';
         if (result === 'save') hints.push(...gkPerks.hints);
       }
     }
@@ -699,7 +700,7 @@ function resolveCornerFollowUp(ctx: DuelContext): MatchEvent | null {
   const totalGoals = ctx.attacking.goals + ctx.defending.goals;
   const runaway = Math.max(0, ctx.attacking.goals - 1) * 3 + Math.max(0, totalGoals - 3) * 3;
   const margin = attackScore - runaway - gkScore;
-  const result: EventResult = margin > GOAL_MARGIN ? 'goal' : margin > -4 ? 'save' : 'miss';
+  const result: EventResult = margin > GOAL_MARGIN ? 'goal' : margin > -3 ? 'save' : 'miss';
   if (result === 'goal') ctx.attacking.goals += 1;
 
   const nctx = narrationCtx(
@@ -890,10 +891,12 @@ export function simulatePenaltyShootout(rng: Rng, home: TeamMatchInfo, away: Tea
     if (scored) {
       lines.push({ text: fresh(penGoal).replace('{score}', score), emphasis: 'goal', side });
     } else {
-      const bank = rng.chance(0.65) ? penSave : penMiss;
+      // Kurtarış ve kaçırma ayrı işaretlenir: canlı kale sahnesi eldiveni doğru oynatsın
+      const saved = rng.chance(0.65);
+      const bank = saved ? penSave : penMiss;
       lines.push({
         text: fresh(bank).replace('{gk}', gk?.name ?? 'Kaleci').replace('{score}', score),
-        emphasis: 'save',
+        emphasis: saved ? 'save' : 'miss',
         side,
       });
     }

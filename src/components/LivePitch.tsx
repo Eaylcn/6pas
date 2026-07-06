@@ -1,6 +1,8 @@
 // Canlı saha: anlatımla eşzamanlı hareket eden top.
 // Ev sahibi soldan sağa hücum eder. Top, GELMEKTE OLAN satırın pozisyonuna
 // satır ekrana düşerken süzülür — metin ve top aynı anda "varır".
+// Penaltılarda (maç içi + seri) saha yerine ÖNDEN KALE sahnesi açılır:
+// eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalır.
 import type { MatchEventType, TeamMatchInfo } from '../types';
 
 export interface BallCue {
@@ -12,34 +14,140 @@ export interface BallCue {
   isGoal: boolean;
   resultKind: string | null;
   minute: number;
+  /** Satır sırası — penaltı köşe seçimini vuruştan vuruşa değiştirir */
+  seq: number;
 }
 
 const WING_TYPES = new Set<string>(['dar-aci', 'korner', 'ters-top', 'calim', 'rabona']);
 
-/** Penaltıda topun gittiği köşe (deterministik): üst/alt */
-function penCornerY(cue: BallCue): number {
-  return (cue.minute * 7 + cue.idx) % 2 === 0 ? 25 : 37;
+function isPenScene(cue: BallCue | null): boolean {
+  return cue?.eventType === 'penalti' || cue?.eventType === 'penalti-seri';
 }
 
-/** Penaltı sahnesi: kaleci hamlesi — golde ters köşeye, kurtarışta topun köşesine uçar */
-export function penKeeperY(cue: BallCue | null): number {
-  if (!cue || !(cue.eventType === 'penalti-seri' || cue.eventType === 'penalti') || !cue.isResult) return 31;
-  const corner = penCornerY(cue);
-  if (cue.resultKind === 'save') return corner; // doğru köşe
-  return corner === 25 ? 37 : 25; // ters köşede kaldı
+// ---- Önden kale sahnesi geometrisi (viewBox 100x62) ----
+const GOAL_L = 24;
+const GOAL_R = 76;
+const BAR_Y = 13;
+const GROUND_Y = 45;
+const SPOT = { x: 50, y: 56 };
+const GLOVES_HOME = { x: 50, y: 39.5 }; // kaleci çizgi ortasında bekler
+
+/** Vuruşun hedef köşesi — deterministik ama vuruştan vuruşa değişir */
+function penShotCorner(cue: BallCue): { x: number; y: number; dir: -1 | 1 } {
+  const dir: -1 | 1 = (cue.minute * 7 + cue.seq) % 2 === 0 ? -1 : 1;
+  const high = (cue.minute * 3 + cue.seq) % 3 !== 0; // üst köşe biraz daha sık
+  return { x: 50 + dir * 21, y: high ? 19.5 : 38.5, dir };
+}
+
+interface PenPose {
+  ball: { x: number; y: number };
+  gloves: { x: number; y: number };
+  dived: boolean;
+}
+
+/** Topun ve eldivenlerin sahnedeki yeri — sonuç satırında ikisi birlikte hareket eder */
+function penPose(cue: BallCue): PenPose {
+  if (!cue.isResult) {
+    // yaklaşma / nokta: top beyaz noktada, eldivenler çizgide hazır
+    return { ball: SPOT, gloves: GLOVES_HOME, dived: false };
+  }
+  const corner = penShotCorner(cue);
+  if (cue.resultKind === 'save') {
+    // eldivenler doğru köşeye uzanır, top eldivenlerin önünde kalır
+    return { ball: { x: corner.x - corner.dir * 2.6, y: corner.y + 2.2 }, gloves: corner, dived: true };
+  }
+  if (cue.resultKind === 'goal') {
+    // top ağlarda, eldivenler ters köşede kalakalır
+    return { ball: corner, gloves: { x: 50 - corner.dir * 17, y: corner.y }, dived: true };
+  }
+  // kaçan vuruş: top üstten/yandan auta, kaleci yine de bir köşeye atlamıştır
+  return {
+    ball: { x: 50 + corner.dir * 13, y: 4.5 },
+    gloves: { x: 50 - corner.dir * 14, y: 30 },
+    dived: true,
+  };
+}
+
+/** Önden kale: direkler, ağ, penaltı noktası, top ve uçan eldivenler */
+function PenaltyGoalScene({ home, away, cue }: { home: TeamMatchInfo; away: TeamMatchInfo; cue: BallCue }) {
+  const pose = penPose(cue);
+  const attacker = cue.side === 'home' ? home : cue.side === 'away' ? away : null;
+  const netVerticals: number[] = [];
+  for (let x = GOAL_L + 4; x < GOAL_R; x += 4) netVerticals.push(x);
+  const netHorizontals: number[] = [];
+  for (let y = BAR_Y + 4.5; y < GROUND_Y; y += 4.5) netHorizontals.push(y);
+
+  return (
+    <svg viewBox="0 0 100 62" className="w-full news-card" role="img" aria-label="Penaltı — kale önü">
+      {/* tribün gölgesi + çim ön plan */}
+      <rect x="0" y="0" width="100" height="62" className="fill-ink" opacity="0.05" />
+      <rect x="0" y={GROUND_Y} width="100" height={62 - GROUND_Y} className="fill-grass" opacity="0.14" />
+      <line x1="0" y1={GROUND_Y} x2="100" y2={GROUND_Y} className="stroke-ink" strokeWidth="0.35" opacity="0.5" />
+
+      {/* ağ */}
+      <g className="stroke-ink" strokeWidth="0.18" opacity="0.22" fill="none">
+        {netVerticals.map((x) => (
+          <line key={`v${x}`} x1={x} y1={BAR_Y + 0.6} x2={x} y2={GROUND_Y - 0.3} />
+        ))}
+        {netHorizontals.map((y) => (
+          <line key={`h${y}`} x1={GOAL_L + 0.6} y1={y} x2={GOAL_R - 0.6} y2={y} />
+        ))}
+      </g>
+
+      {/* kale iskeleti */}
+      <g className="stroke-ink" strokeWidth="1.1" fill="none" opacity="0.9" strokeLinecap="round">
+        <line x1={GOAL_L} y1={BAR_Y} x2={GOAL_L} y2={GROUND_Y} />
+        <line x1={GOAL_R} y1={BAR_Y} x2={GOAL_R} y2={GROUND_Y} />
+        <line x1={GOAL_L} y1={BAR_Y} x2={GOAL_R} y2={BAR_Y} />
+      </g>
+
+      {/* penaltı noktası */}
+      <ellipse cx={SPOT.x} cy={SPOT.y + 1.6} rx="2.2" ry="0.6" className="fill-ink" opacity="0.25" />
+
+      {/* GOL: ağın dalgalanması */}
+      {cue.isGoal && cue.isResult && (
+        <circle cx={pose.ball.x} cy={pose.ball.y} r="3" fill="none" className="stroke-vermil goal-ring" strokeWidth="1" />
+      )}
+
+      {/* kurtarış parıltısı: eldivenler topu bulduğunda */}
+      {cue.isResult && cue.resultKind === 'save' && (
+        <circle cx={pose.gloves.x} cy={pose.gloves.y} r="3" fill="none" className="stroke-gold goal-ring" strokeWidth="0.9" />
+      )}
+
+      {/* eldivenler — kalecinin hamlesi */}
+      <g className="live-ball pen-gloves" style={{ transform: `translate(${pose.gloves.x}px, ${pose.gloves.y}px)` }}>
+        <g transform={pose.dived ? 'rotate(-18)' : undefined}>
+          <rect x="-3.4" y="-1.4" width="2.9" height="3.4" rx="1.2" className="fill-gold" stroke="rgb(var(--ink))" strokeWidth="0.35" />
+          <rect x="0.5" y="-1.7" width="2.9" height="3.4" rx="1.2" className="fill-gold" stroke="rgb(var(--ink))" strokeWidth="0.35" />
+          <line x1="-2" y1="2.2" x2="-2" y2="3" className="stroke-ink" strokeWidth="0.4" opacity="0.6" />
+          <line x1="2" y1="1.9" x2="2" y2="2.7" className="stroke-ink" strokeWidth="0.4" opacity="0.6" />
+        </g>
+      </g>
+
+      {/* top */}
+      <g className="live-ball" style={{ transform: `translate(${pose.ball.x}px, ${pose.ball.y}px)` }}>
+        <circle
+          r="1.7"
+          className={cue.isGoal && cue.isResult ? 'fill-vermil ball-goal' : 'fill-paper'}
+          stroke="rgb(var(--ink))"
+          strokeWidth="0.5"
+        />
+      </g>
+
+      {/* başlık + vuruşu kullanan takım */}
+      <text x="50" y="7" fontSize="3.4" textAnchor="middle" className="fill-vermil font-score" letterSpacing="0.35">
+        {cue.eventType === 'penalti-seri' ? 'SERİ PENALTILAR' : 'PENALTI'}
+      </text>
+      {attacker && (
+        <text x="3" y="60.4" fontSize="2.6" className="fill-ink-soft font-score" letterSpacing="0.2">
+          TOPUN BAŞINDA: {attacker.teamName.toLocaleUpperCase('tr-TR')}
+        </text>
+      )}
+    </svg>
+  );
 }
 
 function ballPos(cue: BallCue | null): { x: number; y: number } {
-  // Seri penaltılar: tek kalede (sağ kale) oynanır — yaklaşma → nokta → vuruş
-  if (cue?.eventType === 'penalti-seri') {
-    if (cue.isResult) {
-      const y = penCornerY(cue);
-      if (cue.resultKind === 'goal') return { x: 96.8, y };
-      if (cue.resultKind === 'save') return { x: 93.5, y };
-      return { x: 99.5, y: 7 }; // kaçan penaltı
-    }
-    return cue.idx === 0 ? { x: 80, y: 31 } : { x: 88, y: 31 }; // yaklaşma → penaltı noktası
-  }
   if (!cue || !cue.side) {
     return { x: 50, y: 31 }; // santra
   }
@@ -53,7 +161,6 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
   if (cue.eventType === 'sakatlik' || cue.eventType === 'degisiklik') return { x: 50, y: 58 };
   if (cue.eventType === 'gerginlik') return { x: 50 + dir * 24, y }; // faul noktasında itişme
   if (cue.eventType === 'faul') return { x: 50 + dir * 24, y };
-  if (cue.eventType === 'penalti') return { x: 50 + dir * 40, y: 31 };
   if (cue.eventType === 'serbest-vurus') {
     return cue.isResult ? { x: 50 + dir * 47, y: 31 } : { x: 50 + dir * 30, y };
   }
@@ -80,10 +187,12 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
 }
 
 export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: TeamMatchInfo; cue: BallCue | null }) {
+  if (cue && isPenScene(cue)) {
+    return <PenaltyGoalScene home={home} away={away} cue={cue} />;
+  }
+
   const pos = ballPos(cue);
   const goalDir = cue?.side === 'home' ? 1 : -1;
-  const penScene = cue?.eventType === 'penalti-seri' || cue?.eventType === 'penalti';
-  const keeperY = penKeeperY(cue);
 
   return (
     <svg viewBox="0 0 100 62" className="w-full news-card" role="img" aria-label="Canlı saha">
@@ -110,13 +219,6 @@ export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: Team
           className="stroke-vermil goal-ring"
           strokeWidth="1"
         />
-      )}
-
-      {/* Penaltı sahnesinde kaleci: çizgide bekler, vuruşta köşeye uçar */}
-      {penScene && (
-        <g className="live-ball" style={{ transform: `translate(97.2px, ${keeperY}px)` }}>
-          <rect x="-0.9" y="-2.6" width="1.8" height="5.2" rx="0.9" className="fill-ink" opacity="0.85" />
-        </g>
       )}
 
       {/* top */}
