@@ -6,9 +6,11 @@ import { useGameStore } from '../store/useGameStore';
 import { getClippings, getRunHistory, type MatchClipping, type RunRecord } from '../services/historyService';
 import { tournamentRoundLabel } from '../game/tournamentEngine';
 import { resetAllData } from '../services/storage';
+import { isOnline } from '../services/supabaseClient';
 
 export function HomeDashboard() {
   const user = useUserStore((s) => s.user);
+  const logout = useUserStore((s) => s.logout);
   const run = useGameStore((s) => s.run);
   const goto = useGameStore((s) => s.goto);
   const startNewTeamFlow = useGameStore((s) => s.startNewTeamFlow);
@@ -64,8 +66,21 @@ export function HomeDashboard() {
         {t('home.leaderboard')}
       </button>
 
-      <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft">
-        <span>⭐ 2025-26 gerçek kadroları</span>
+      <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft flex-wrap gap-2">
+        <span className="flex items-center gap-3">
+          ⭐ 2025-26 gerçek kadroları
+          {isOnline && <span className="text-grass-deep">🌐 Canlı tablo</span>}
+          {isOnline && (
+            <button
+              className="underline hover:text-vermil"
+              onClick={() => {
+                void logout().then(() => goto('login'));
+              }}
+            >
+              Çıkış Yap
+            </button>
+          )}
+        </span>
         {/* window.confirm iframe'de engellenebildiği için iki aşamalı inline onay */}
         {resetArmed ? (
           <span className="flex items-center gap-2">

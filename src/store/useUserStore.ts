@@ -9,7 +9,9 @@ interface UserState {
   tournamentBoard: LeaderboardEntry[];
   initialized: boolean;
   init: () => Promise<void>;
-  login: (username: string) => Promise<User>;
+  login: (username: string, password?: string) => Promise<User>;
+  register: (username: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
   refreshLeaderboard: () => Promise<void>;
   applyMatchOutcome: (input: {
     mode: 'classic' | 'tournament';
@@ -36,10 +38,21 @@ export const useUserStore = create<UserState>((set, get) => ({
     set({ user, leaderboard, tournamentBoard, initialized: true });
   },
 
-  login: async (username: string) => {
-    const user = await authService.login(username.trim());
+  login: async (username: string, password?: string) => {
+    const user = await authService.login(username.trim(), password);
     set({ user });
     return user;
+  },
+
+  register: async (username: string, password: string) => {
+    const user = await authService.register(username.trim(), password);
+    set({ user });
+    return user;
+  },
+
+  logout: async () => {
+    await authService.logout();
+    set({ user: null });
   },
 
   refreshLeaderboard: async () => {

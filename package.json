@@ -13,6 +13,7 @@
     "@fontsource/archivo-narrow": "^5.2.8",
     "@fontsource/playfair-display": "^5.2.8",
     "@fontsource/source-sans-3": "^5.2.9",
+    "@supabase/supabase-js": "^2.110.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.5"

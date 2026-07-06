@@ -1,21 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t } from '../i18n';
 import { SectionHeadline } from '../components/NewspaperShell';
 import { tournamentRoundLabel } from '../game/tournamentEngine';
+import { isOnline } from '../services/supabaseClient';
 import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
 
 type Tab = 'classic' | 'tournament';
 
 export function LeaderboardScreen() {
-  const { leaderboard, tournamentBoard, user } = useUserStore();
+  const { leaderboard, tournamentBoard, user, refreshLeaderboard } = useUserStore();
   const goto = useGameStore((s) => s.goto);
   const [tab, setTab] = useState<Tab>('classic');
   const entries = tab === 'classic' ? leaderboard : tournamentBoard;
 
+  // Ekran açılınca tabloyu tazele — online modda diğer oyuncuların skorları düşer
+  useEffect(() => {
+    void refreshLeaderboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="max-w-2xl mx-auto">
-      <SectionHeadline sub={t('leaderboard.sub')}>{t('leaderboard.headline')}</SectionHeadline>
+      <SectionHeadline sub={isOnline ? '🌐 Canlı — tüm menajerler' : t('leaderboard.sub')}>
+        {t('leaderboard.headline')}
+      </SectionHeadline>
 
       {/* Sekmeler: klasik ve turnuva tabloları ayrıdır */}
       <div className="flex gap-2 mb-3">

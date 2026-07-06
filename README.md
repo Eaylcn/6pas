@@ -81,8 +81,18 @@ src/
 
 Detaylı planlar: [`docs/GELISTIRME_PLANI.md`](docs/GELISTIRME_PLANI.md) · [`docs/UI_GUNCELLEME_PLANI.md`](docs/UI_GUNCELLEME_PLANI.md)
 
+## Online Mod (hesaplar + canlı ortak puan tabloları)
+
+Supabase env değişkenleri verilirse oyun **canlı moda** geçer: kullanıcı adı + şifreyle
+kayıt/giriş, statlar hesaba yazılır (atomik `apply_match_outcome` RPC), Klasik/Turnuva
+puan tabloları tüm oyuncular için ortak ve canlıdır, Takım Defteri hesabında saklanır.
+Env verilmezse her şey lokal çalışır (tek dosyalık sürüm dahil).
+
+**Yayınlamak için:** [`DEPLOY.md`](DEPLOY.md) — Supabase (schema.sql + Confirm email kapat)
++ Vercel (repo import + 2 env değişkeni), ~15 dakika.
+
 ## Yol Haritası
-1. **Paylaşılan canlı puan tablosu** — arkadaşlar aynı tabloda yarışsın: küçük bir backend gerekir (ör. Vercel/Netlify deploy + Supabase); `leaderboardService` imzaları hazır, mock yerine gerçek API bağlanacak
-2. **Kayıt olma / hesap sistemi** (mock login → gerçek auth)
-3. **Online PvP maç** — plan hazır (UI planı §9): sunucu otoriteli senkron yayın, PvP'de hız/atlama kapalı, mola hakkı + devre arası penceresi
-4. Ranked (Elo alanları hazır) · Hava koşulları (WeatherModifier iskeleti motorda)
+1. **Online PvP maç** — kural taslağı onay bekliyor: [`docs/ONLINE_KURALLAR.md`](docs/ONLINE_KURALLAR.md)
+   (yarı başına 1 mola/25 sn, zorunlu duraklamalar moladan sayılmaz, 45 sn devre arası,
+   kopan tarafın kadrosunu AI devralır, davet kodlu özel maç)
+2. Ranked (Elo alanları hazır) · Hava koşulları (WeatherModifier iskeleti motorda)
