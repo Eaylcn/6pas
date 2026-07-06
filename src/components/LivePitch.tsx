@@ -3,7 +3,8 @@
 // satır ekrana düşerken süzülür — metin ve top aynı anda "varır".
 // Penaltılarda (maç içi + seri) saha yerine ÖNDEN KALE sahnesi açılır:
 // eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalır.
-import type { MatchEventType, TeamMatchInfo } from '../types';
+// Vuruş detayı (cue.pen) motor tarafından anlatımla AYNI kaynaktan üretilir.
+import type { MatchEventType, PenaltyDetail, PenSide, TeamMatchInfo } from '../types';
 
 export interface BallCue {
   side: 'home' | 'away' | null;
@@ -16,6 +17,8 @@ export interface BallCue {
   minute: number;
   /** Satır sırası — penaltı köşe seçimini vuruştan vuruşa değiştirir */
   seq: number;
+  /** Penaltı vuruş detayı: anlatım satırıyla birebir aynı köşe/hamle */
+  pen?: PenaltyDetail | null;
 }
 
 const WING_TYPES = new Set<string>(['dar-aci', 'korner', 'ters-top', 'calim', 'rabona']);
@@ -32,11 +35,22 @@ const GROUND_Y = 45;
 const SPOT = { x: 50, y: 56 };
 const GLOVES_HOME = { x: 50, y: 39.5 }; // kaleci çizgi ortasında bekler
 
-/** Vuruşun hedef köşesi — deterministik ama vuruştan vuruşa değişir */
-function penShotCorner(cue: BallCue): { x: number; y: number; dir: -1 | 1 } {
-  const dir: -1 | 1 = (cue.minute * 7 + cue.seq) % 2 === 0 ? -1 : 1;
-  const high = (cue.minute * 3 + cue.seq) % 3 !== 0; // üst köşe biraz daha sık
-  return { x: 50 + dir * 21, y: high ? 19.5 : 38.5, dir };
+/** Vuruş yönü → sahnedeki x koordinatı */
+const PEN_X: Record<PenSide, number> = { L: 29, C: 50, R: 71 };
+
+/** Detay yoksa (ör. seri sonu özet satırları) deterministik yedek köşe */
+function fallbackPen(cue: BallCue): PenaltyDetail {
+  const left = (cue.minute * 7 + cue.seq) % 2 === 0;
+  const high = (cue.minute * 3 + cue.seq) % 3 !== 0;
+  const shotX: PenSide = left ? 'L' : 'R';
+  return { shotX, high, diveX: cue.resultKind === 'save' ? shotX : left ? 'R' : 'L' };
+}
+
+/** Topun hedef noktası: köşeler üst/alt, orta vuruşlar kaleci hizasında */
+function penTargetPoint(pen: PenaltyDetail): { x: number; y: number } {
+  const x = PEN_X[pen.shotX];
+  if (pen.shotX === 'C') return { x, y: pen.high ? 24 : 35 };
+  return { x, y: pen.high ? 19.5 : 38.5 };
 }
 
 interface PenPose {
@@ -51,21 +65,29 @@ function penPose(cue: BallCue): PenPose {
     // yaklaşma / nokta: top beyaz noktada, eldivenler çizgide hazır
     return { ball: SPOT, gloves: GLOVES_HOME, dived: false };
   }
-  const corner = penShotCorner(cue);
+  const pen = cue.pen ?? fallbackPen(cue);
+  const target = penTargetPoint(pen);
+
   if (cue.resultKind === 'save') {
-    // eldivenler doğru köşeye uzanır, top eldivenlerin önünde kalır
-    return { ball: { x: corner.x - corner.dir * 2.6, y: corner.y + 2.2 }, gloves: corner, dived: true };
+    // eldivenler topun gittiği yere uzanır; orta vuruşta kaleci yerinde kalır
+    if (pen.shotX === 'C') {
+      return { ball: { x: 50, y: target.y + 2 }, gloves: { x: 50, y: target.y }, dived: false };
+    }
+    const toCenter = target.x < 50 ? 1 : -1;
+    return { ball: { x: target.x + toCenter * 2.6, y: target.y + 2.2 }, gloves: target, dived: true };
   }
   if (cue.resultKind === 'goal') {
-    // top ağlarda, eldivenler ters köşede kalakalır
-    return { ball: corner, gloves: { x: 50 - corner.dir * 17, y: corner.y }, dived: true };
+    // top hedef köşede/ortada ağlarda; eldivenler kalecinin gittiği yönde kalakalır
+    const glovesY = pen.shotX === 'C' ? 28 : target.y;
+    return { ball: target, gloves: { x: PEN_X[pen.diveX], y: glovesY }, dived: true };
   }
-  // kaçan vuruş: top üstten/yandan auta, kaleci yine de bir köşeye atlamıştır
-  return {
-    ball: { x: 50 + corner.dir * 13, y: 4.5 },
-    gloves: { x: 50 - corner.dir * 14, y: 30 },
-    dived: true,
-  };
+  // kaçan vuruş: üst direğin üstünden aut ya da direkten dönüş
+  if (pen.out === 'post') {
+    const postBall = { x: pen.shotX === 'L' ? 21.4 : 78.6, y: pen.high ? 22 : 34 };
+    return { ball: postBall, gloves: { x: PEN_X[pen.diveX], y: 30 }, dived: true };
+  }
+  const barX = 50 + (PEN_X[pen.shotX] - 50) * 0.5;
+  return { ball: { x: barX, y: 4.5 }, gloves: { x: PEN_X[pen.diveX], y: 28 }, dived: true };
 }
 
 /** Önden kale: direkler, ağ, penaltı noktası, top ve uçan eldivenler */

@@ -4,11 +4,14 @@ import type {
   AnyPlayer,
   EventResult,
   FieldPlayer,
+  FieldPosition,
   Goalkeeper,
   HiddenRoll,
   MatchEvent,
   MatchEventType,
+  PenaltyDetail,
   PenaltyShootoutResult,
+  PenSide,
   TeamMatchInfo,
   WeatherModifier,
 } from '../types';
@@ -49,6 +52,8 @@ export interface SimTeamState {
   injuredIds: string[];
   subsUsed: number;
   tacticalSubDone: boolean;
+  /** Kullanıcı takımında sakatlık sonrası bekleyen zorunlu değişiklik (maç durur) */
+  pendingForcedSubPos: FieldPosition | null;
   /** Son bilinen aktif taktik — kayma anlatımı için */
   lastActiveStyle: string | null;
 }
@@ -63,6 +68,7 @@ export function createSimTeamState(info: TeamMatchInfo): SimTeamState {
     injuredIds: [],
     subsUsed: 0,
     tacticalSubDone: false,
+    pendingForcedSubPos: null,
     lastActiveStyle: null,
   };
 }
@@ -123,6 +129,34 @@ export function performSub(state: SimTeamState, outId: string, inId: string): bo
   state.info.players = state.info.players.map((p) => (p.id === outId ? inPlayer : p));
   state.info.bench = state.info.bench.filter((p) => p.id !== inId);
   state.subsUsed += 1;
+  state.info.chemistry = calculateTeamChemistry(state.info.players, state.info.captainId);
+  return true;
+}
+
+/** Sakat çıkan oyuncunun yerine yedek sokar (sakat zaten sahadan düşmüştür) */
+export function performInjuryReplacement(state: SimTeamState, inId: string): boolean {
+  const inPlayer = state.info.bench.find((p) => p.id === inId);
+  if (!inPlayer || isGoalkeeper(inPlayer)) return false;
+  state.info.players = [...state.info.players, inPlayer];
+  state.info.bench = state.info.bench.filter((p) => p.id !== inId);
+  state.subsUsed += 1;
+  state.pendingForcedSubPos = null;
+  state.info.chemistry = calculateTeamChemistry(state.info.players, state.info.captainId);
+  return true;
+}
+
+/**
+ * Maç içi mevki kaydırma: oyuncu kopyalanarak yeni mevkiye yazılır
+ * (havuzdaki orijinal nesne değişmez; sadece bu maçın kadrosunu etkiler).
+ * Kırmızı kart sonrası "ortasahacıyı savunmaya çek" tarzı müdahalenin yolu.
+ */
+export function reassignPosition(state: SimTeamState, playerId: string, newPos: FieldPosition): boolean {
+  const target = state.info.players.find((p) => p.id === playerId);
+  if (!target || isGoalkeeper(target)) return false;
+  if ((target as FieldPlayer).position === newPos) return false;
+  state.info.players = state.info.players.map((p) =>
+    p.id === playerId ? ({ ...(p as FieldPlayer), position: newPos } as FieldPlayer) : p,
+  );
   state.info.chemistry = calculateTeamChemistry(state.info.players, state.info.captainId);
   return true;
 }
@@ -340,6 +374,30 @@ function buildFreeKickEvent(ctx: DuelContext): MatchEvent {
   return event;
 }
 
+/**
+ * Penaltı vuruş detayı — sonuç belli olduktan sonra tutarlı bir sahne kurar:
+ * anlatım satırı ve canlı kale görseli aynı detaydan beslenir.
+ */
+export function pickPenaltyDetail(rng: Rng, result: 'goal' | 'save' | 'miss'): PenaltyDetail {
+  const roll = rng.int(1, 10);
+  let shotX: PenSide = roll <= 4 ? 'L' : roll <= 8 ? 'R' : 'C';
+  let high = shotX === 'C' ? rng.chance(0.3) : rng.chance(0.45);
+  let out: 'bar' | 'post' | undefined;
+  let diveX: PenSide;
+
+  if (result === 'save') {
+    diveX = shotX; // kaleci doğru köşeyi (veya ortayı) bilmiştir
+  } else if (result === 'goal') {
+    diveX = shotX === 'C' ? (rng.chance(0.5) ? 'L' : 'R') : shotX === 'L' ? 'R' : 'L'; // ters köşe
+  } else {
+    out = rng.chance(0.55) ? 'bar' : 'post';
+    if (out === 'bar') high = true;
+    if (out === 'post' && shotX === 'C') shotX = rng.chance(0.5) ? 'L' : 'R';
+    diveX = rng.chance(0.5) ? 'L' : 'R';
+  }
+  return { shotX, high, diveX, out };
+}
+
 function buildPenaltyEvent(ctx: DuelContext, fouledPlayer: FieldPlayer): MatchEvent {
   const { rng, narration } = ctx.sim;
   const attackers = fieldPlayersOf(ctx.attacking.info);
@@ -355,6 +413,7 @@ function buildPenaltyEvent(ctx: DuelContext, fouledPlayer: FieldPlayer): MatchEv
   const scored = rng.chance(pGoal);
   const result: EventResult = scored ? 'goal' : rng.chance(0.65) ? 'save' : 'miss';
   if (result === 'goal') ctx.attacking.goals += 1;
+  const pen = pickPenaltyDetail(rng, result as 'goal' | 'save' | 'miss');
 
   const nctx = narrationCtx(
     ctx,
@@ -363,8 +422,9 @@ function buildPenaltyEvent(ctx: DuelContext, fouledPlayer: FieldPlayer): MatchEv
     scoreNow(ctx),
     result === 'goal' ? goalStateOf(ctx) : undefined,
   );
-  const event = baseEvent(ctx, 'penalti', result, [shooter.id, ...(gk ? [gk.id] : [])], narration.penaltyLines(nctx, result), {
+  const event = baseEvent(ctx, 'penalti', result, [shooter.id, ...(gk ? [gk.id] : [])], narration.penaltyLines(nctx, result, pen), {
     setPiece: 'pen',
+    pen,
   });
   event.hiddenDiceRolls = rolls;
   return event;
@@ -379,7 +439,16 @@ function buildInjuryEvents(ctx: DuelContext, injured: FieldPlayer): MatchEvent[]
     baseEvent(ctx, 'sakatlik', 'injury', [injured.id], narration.injuryLines(nctx), { injuryPlayerId: injured.id }),
   );
 
-  // Zorunlu değişiklik: aynı pozisyondaki en güçlü yedek
+  // Kullanıcı takımı: otomatik değişiklik YOK — maç durur, kararı teknik direktör verir
+  if (!state.info.isGhost) {
+    removeFromField(state, injured.id, 'injury');
+    const canReplace =
+      state.subsUsed < MAX_SUBSTITUTIONS && state.info.bench.some((b) => !isGoalkeeper(b));
+    if (canReplace) state.pendingForcedSubPos = injured.position;
+    return events;
+  }
+
+  // Ghost rakip: aynı pozisyondaki en güçlü yedek otomatik girer
   const candidates = state.info.bench
     .filter((b) => !isGoalkeeper(b) && (b as FieldPlayer).position === injured.position)
     .sort((a, b) => b.ovr - a.ovr);
@@ -502,7 +571,7 @@ function resolveDuelChain(ctx: DuelContext): MatchEvent[] {
     atkTactic.attack +
     atkChem +
     weather.shotControl -
-    atkMissing +
+    atkMissing * 2 +
     atkRoll;
 
   const defenseScore =
@@ -511,7 +580,7 @@ function resolveDuelChain(ctx: DuelContext): MatchEvent[] {
     (isDefCaptain ? CAPTAIN_BONUS : 0) +
     defTactic.defense +
     defChem -
-    defMissing * 2 +
+    defMissing * 3 +
     defRoll;
 
   const margin = attackScore - defenseScore;
@@ -850,10 +919,29 @@ export function generateExtraTimeEvents(ctx: HalfContext): MatchEvent[] {
 }
 
 // ---- Seri penaltılar ----
+// Anlatım bankaları vuruş detayına (köşe/yer/orta, kurtarış şekli, aut şekli) göre
+// ayrılmıştır: canlı kale sahnesi ile spiker HEP aynı şeyi anlatır.
 const penSuspense = ['Koşuya geçti…', 'Stadyumda çıt yok…', 'Derin bir nefes aldı…', 'Kaleciyle göz göze…', 'Topu yerleştirdi, geri çekildi…'];
-const penGoal = ['GOOOL! Köşeye çakıldı! ({score})', 'GOOOL! Kaleci ters köşede kaldı! ({score})', 'GOOOL! Üst köşeye, nokta atışı! ({score})', 'GOOOL! Soğukkanlı bir vuruş! ({score})'];
-const penSave = ['{gk} KURTARDI! Köşeye uzanıp topu çeldi! ({score})', '{gk} KURTARDI! Hamlesini doğru köşeye yaptı! ({score})', '{gk} KURTARDI! Ayaklarıyla kapattı! ({score})'];
-const penMiss = ['Direkten döndü! İnanılmaz! ({score})', 'Auta gitti! Topu kalenin üstünden aşırdı! ({score})'];
+const penGoalHigh = ['GOOOL! Üst köşeye, nokta atışı! ({score})', 'GOOOL! Topu üst köşeye çaktı, kaleci ters tarafta! ({score})', 'GOOOL! Ağların en üstüne! Muhteşem vuruş! ({score})'];
+const penGoalLow = ['GOOOL! Yerden köşeye, kaleci ters köşede kaldı! ({score})', 'GOOOL! Sert ve yerden, direğin dibinden! ({score})', 'GOOOL! Yerden plase, kaleci öbür tarafa uçtu! ({score})'];
+const penGoalCenter = ['GOOOL! Kaleci köşeye uçtu, top ortadan ağlara! ({score})', 'GOOOL! Ortaya bıraktı; kaleci çoktan köşeye yatmıştı! ({score})'];
+const penSaveHigh = ['{gk} KURTARDI! Uçarak üst köşeden çıkardı! ({score})', '{gk} KURTARDI! Köşeye uzanıp topu tek elle çeldi! ({score})'];
+const penSaveLow = ['{gk} KURTARDI! Yerden gelen topu köşede kapattı! ({score})', '{gk} KURTARDI! Ayaklarıyla kapattı! ({score})'];
+const penSaveCenter = ['{gk} KURTARDI! Yerinden kımıldamadı, topu göğsünde topladı! ({score})', '{gk} KURTARDI! Ortaya vuruşu okudu, kolayca aldı! ({score})'];
+const penMissBar = ['Auta gitti! Topu kalenin üstünden aşırdı! ({score})', 'Üst direğin üzerinden auta! Tribünler nefes aldı! ({score})'];
+const penMissPost = ['Direkten döndü! İnanılmaz! ({score})', 'Top direğe çarpıp dışarı! Santimlerle gol yok! ({score})'];
+
+function penGoalBank(pen: PenaltyDetail): string[] {
+  if (pen.shotX === 'C') return penGoalCenter;
+  return pen.high ? penGoalHigh : penGoalLow;
+}
+function penSaveBank(pen: PenaltyDetail): string[] {
+  if (pen.shotX === 'C') return penSaveCenter;
+  return pen.high ? penSaveHigh : penSaveLow;
+}
+function penMissBank(pen: PenaltyDetail): string[] {
+  return pen.out === 'post' ? penMissPost : penMissBar;
+}
 
 export function simulatePenaltyShootout(rng: Rng, home: TeamMatchInfo, away: TeamMatchInfo): PenaltyShootoutResult {
   const lines: PenaltyShootoutResult['lines'] = [];
@@ -889,15 +977,18 @@ export function simulatePenaltyShootout(rng: Rng, home: TeamMatchInfo, away: Tea
     lines.push({ text: `${round}. penaltı — ${team.teamName}: ${shooter.name} topun başında.`, emphasis: 'normal', side });
     lines.push({ text: fresh(penSuspense), emphasis: 'suspense', side });
     if (scored) {
-      lines.push({ text: fresh(penGoal).replace('{score}', score), emphasis: 'goal', side });
+      const pen = pickPenaltyDetail(rng, 'goal');
+      lines.push({ text: fresh(penGoalBank(pen)).replace('{score}', score), emphasis: 'goal', side, pen });
     } else {
       // Kurtarış ve kaçırma ayrı işaretlenir: canlı kale sahnesi eldiveni doğru oynatsın
       const saved = rng.chance(0.65);
-      const bank = saved ? penSave : penMiss;
+      const pen = pickPenaltyDetail(rng, saved ? 'save' : 'miss');
+      const bank = saved ? penSaveBank(pen) : penMissBank(pen);
       lines.push({
         text: fresh(bank).replace('{gk}', gk?.name ?? 'Kaleci').replace('{score}', score),
         emphasis: saved ? 'save' : 'miss',
         side,
+        pen,
       });
     }
   };

@@ -16,15 +16,31 @@ import {
 } from '../store/useGameStore';
 import { getActiveTacticByScoreState as getActiveTactic } from '../game/tacticsEngine';
 import { computeMatchRatings, ratingTone } from '../game/ratingsEngine';
+import { getAssistantAdvice } from '../game/assistantEngine';
 import type { SimTeamState } from '../game/matchEngine';
 
 const PHASE_START: Record<MatchPhase, number> = { H1: 1, H2: 31, ET: 61, PENS: 70 };
 const PHASE_END: Record<MatchPhase, number> = { H1: 30, H2: 60, ET: 70, PENS: 70 };
 
-/** Canlı reytingli kadro paneli (PC: yan sütun, mobil: log altı) */
+/** Canlı reytingli kadro paneli (PC: yan sütun, mobil: log altı) — kart/sakatlık/değişiklik ikonlu */
 function RosterPanel({ state, side, events }: { state: SimTeamState; side: 'home' | 'away'; events: MatchEvent[] }) {
   const ratings = computeMatchRatings(events, state, side);
   const toneClass = { great: 'bg-grass text-paper', good: 'bg-ink text-paper', poor: 'bg-vermil text-paper' };
+
+  // Durum ikonları AÇILMIŞ olaylardan türetilir — spoiler sızmaz
+  const yellows = new Set<string>();
+  const reds = new Set<string>();
+  const injured = new Set<string>();
+  const subbedOut = new Set<string>();
+  for (const e of events) {
+    if (e.card && e.cardPlayerId && e.defendingTeam === side) {
+      if (e.card === 'red') reds.add(e.cardPlayerId);
+      else yellows.add(e.cardPlayerId);
+    }
+    if (e.result === 'injury' && e.injuryPlayerId && e.attackingTeam === side) injured.add(e.injuryPlayerId);
+    if (e.subOutId && e.attackingTeam === side) subbedOut.add(e.subOutId);
+  }
+
   return (
     <div className="news-card p-2.5">
       <div
@@ -38,12 +54,22 @@ function RosterPanel({ state, side, events }: { state: SimTeamState; side: 'home
         {ratings.map((r) => {
           const parts = r.player.name.split(' ');
           const short = parts.length > 1 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : r.player.name;
+          const id = r.player.id;
+          const offField = reds.has(id) || injured.has(id) || subbedOut.has(id);
+          const marks = [
+            reds.has(id) ? '🟥' : yellows.has(id) ? '🟨' : null,
+            injured.has(id) ? '⚕️' : null,
+            !reds.has(id) && !injured.has(id) && subbedOut.has(id) ? '🔁' : null,
+          ]
+            .filter(Boolean)
+            .join('');
           return (
-            <div key={r.player.id} className="flex items-center gap-1.5 text-[11px]">
+            <div key={id} className={`flex items-center gap-1.5 text-[11px] ${offField ? 'opacity-50' : ''}`}>
               <span className={`font-score font-bold px-1 min-w-[26px] text-center ${toneClass[ratingTone(r.rating)]}`}>
                 {r.rating.toFixed(1)}
               </span>
               <span className="truncate">{short}</span>
+              {marks && <span className="text-[10px] leading-none shrink-0">{marks}</span>}
             </div>
           );
         })}
@@ -147,6 +173,7 @@ function buildLines(session: MatchSession): FlatLine[] {
           resultKind: isLast ? e.result : null,
           minute: e.minute,
           seq: i,
+          pen: isLast ? (e.pen ?? null) : null,
         },
       });
     });
@@ -175,6 +202,7 @@ function buildLines(session: MatchSession): FlatLine[] {
           resultKind: l.emphasis === 'goal' ? 'goal' : l.emphasis === 'save' ? 'save' : l.emphasis === 'miss' ? 'miss' : null,
           minute: 70,
           seq: i,
+          pen: l.pen ?? null,
         },
       });
     });
@@ -269,11 +297,62 @@ function Momentum({ events }: { events: MatchEvent[] }) {
   );
 }
 
+// ---- Yardımcı antrenör önerileri (devre arası + kenara talimat ortak bileşen) ----
+export function AssistantAdviceCard({ context }: { context: 'HT' | 'LIVE' }) {
+  const { session, applyAssistantAction } = useGameStore();
+  const [applied, setApplied] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const advice = useMemo(
+    () => (session ? getAssistantAdvice(session.sim, session.events) : []),
+    // Öneriler panel açıldığı andaki duruma göre bir kez hesaplanır
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  if (!session || advice.length === 0) return null;
+
+  return (
+    <div className="border border-ink/30 bg-paper-deep/40 p-3 mb-4">
+      <div className="tag-label mb-2">🧢 Yardımcı Antrenör</div>
+      {error && <p className="text-xs font-semibold text-vermil mb-1">{error}</p>}
+      <div className="space-y-2">
+        {advice.map((a, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <p className="text-[13px] leading-snug italic flex-1">“{a.text}”</p>
+            {a.action &&
+              (applied.includes(i) ? (
+                <span className="text-[11px] font-score uppercase text-grass-deep shrink-0 pt-0.5">✔ Yapıldı</span>
+              ) : (
+                <button
+                  className="btn-press text-[11px] px-2 py-1 shrink-0"
+                  onClick={() => {
+                    const err = applyAssistantAction(a.action!, context);
+                    setError(err);
+                    if (!err) setApplied((prev) => [...prev, i]);
+                  }}
+                >
+                  {a.applyLabel ?? 'Uygula'}
+                </button>
+              ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---- Kenara Talimat paneli ----
 function SidelinePanel({ onClose }: { onClose: () => void }) {
-  const { session, makeSubstitution, sidelineTacticChange } = useGameStore();
+  const {
+    session,
+    makeSubstitution,
+    sidelineTacticChange,
+    makeInjuryReplacement,
+    dismissForcedSub,
+    sidelinePositionChange,
+  } = useGameStore();
   const [outId, setOutId] = useState<string | null>(null);
   const [style, setStyle] = useState<PlayStyle | null>(null);
+  const [posPlayerId, setPosPlayerId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   if (!session) return null;
 
@@ -283,6 +362,10 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
   const fieldPlayers = home.info.players; // kaleci dahil — GK↔GK değişikliği serbest
   const outPlayer = outId ? fieldPlayers.find((p) => p.id === outId) : null;
   const eligible = outPlayer ? home.info.bench.filter((b) => b.position === outPlayer.position) : [];
+  const forcedPos = home.pendingForcedSubPos;
+  const benchField = home.info.bench.filter((b) => !isGoalkeeper(b));
+  const outfield = fieldPlayers.filter((p): p is FieldPlayer => !isGoalkeeper(p));
+  const posPlayer = posPlayerId ? outfield.find((p) => p.id === posPlayerId) : null;
 
   return (
     <div
@@ -301,6 +384,43 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
         </div>
         <p className="text-xs italic text-ink-faint mb-3">{t('match.sidelineNote')}</p>
         {message && <p className="text-xs font-semibold text-vermil mb-2">{message}</p>}
+
+        {/* Zorunlu değişiklik: sakat çıkan oyuncunun yerine isim sokulmalı */}
+        {forcedPos && (
+          <div className="border-2 border-vermil bg-vermil/10 p-3 mb-4">
+            <div className="tag-label text-vermil border-vermil mb-1">⚕ Zorunlu Değişiklik</div>
+            <p className="text-xs mb-2">
+              Sakatlık sonrası <b>{t(`position.${forcedPos}`)}</b> bölgesi eksik kaldı. Kulübeden bir isim sok
+              (farklı mevkiden oyuncu da girebilir) ya da eksik devam et.
+            </p>
+            {subsLeft > 0 && benchField.length > 0 ? (
+              <div className="grid grid-cols-2 gap-1.5 mb-2">
+                {benchField.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`text-left px-2 py-1 border text-xs hover:bg-grass-deep hover:text-paper ${
+                      p.position === forcedPos ? 'border-grass-deep font-semibold' : 'border-ink/30'
+                    }`}
+                    onClick={() => {
+                      const err = makeInjuryReplacement(p.id);
+                      setMessage(err);
+                    }}
+                  >
+                    <span className="text-[9px] font-score uppercase opacity-70 mr-1">{t(`position.${p.position}`)}</span>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] italic text-ink-faint mb-2">Değişiklik imkânı yok — eksik devam edilecek.</p>
+            )}
+            <button className="btn-outline text-[11px] px-2 py-1" onClick={() => dismissForcedSub()}>
+              Eksik devam et
+            </button>
+          </div>
+        )}
+
+        <AssistantAdviceCard context="LIVE" />
 
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
@@ -354,6 +474,51 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
+        {/* Mevki kaydırma: kırmızı sonrası "ortasahacıyı savunmaya çek" müdahalesi */}
+        <div className="mb-4">
+          <span className="tag-label">Mevki Kaydır</span>
+          <p className="text-[11px] italic text-ink-faint mt-0.5 mb-1.5">
+            Sahadaki bir oyuncuyu başka bölgeye çek (ör. eksik kalınca orta sahadan savunmaya).
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              {outfield.map((p) => (
+                <button
+                  key={p.id}
+                  className={`w-full text-left px-2 py-1 border text-xs ${
+                    posPlayerId === p.id ? 'border-vermil bg-paper font-bold' : 'border-ink/30 hover:border-ink'
+                  }`}
+                  onClick={() => setPosPlayerId(p.id === posPlayerId ? null : p.id)}
+                >
+                  <span className="text-[9px] font-score uppercase text-ink-faint mr-1">{t(`position.${p.position}`)}</span>
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-1">
+              {posPlayer ? (
+                (['DEF', 'MID', 'ATK'] as const).map((pos) => (
+                  <button
+                    key={pos}
+                    disabled={posPlayer.position === pos}
+                    className="w-full text-left px-2 py-1 border border-grass-deep text-xs hover:bg-grass-deep hover:text-paper disabled:opacity-40 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      const err = sidelinePositionChange(posPlayer.id, pos);
+                      setMessage(err ?? `${posPlayer.name} artık ${t(`position.${pos}`)} bölgesinde oynayacak.`);
+                      if (!err) setPosPlayerId(null);
+                    }}
+                  >
+                    → {t(`position.${pos}`)}
+                    {posPlayer.position === pos ? ' (şu anki)' : ''}
+                  </button>
+                ))
+              ) : (
+                <p className="text-[11px] italic text-ink-faint">Önce oyuncu seç.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="tag-label">{t('common.playStyle')}</span>
@@ -388,8 +553,10 @@ export function MatchSimulationScreen() {
   const [speed, setSpeed] = useState<1 | 2>(1);
   const [sidelineOpen, setSidelineOpen] = useState(false);
   const [goalBand, setGoalBand] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const endingRef = useRef(false);
+  const processedRef = useRef<number | null>(null);
 
   const phase = session?.phase ?? 'H1';
   const lines = useMemo(() => (session ? buildLines(session) : []), [session]);
@@ -426,8 +593,8 @@ export function MatchSimulationScreen() {
       if (next.isSuspense) delay = 1900;
       if (next.isResult) delay = 2100;
       if (next.isGoal) delay = 2300;
-      // Seri penaltılar: nefes kesen, ağır tempo
-      if (next.cue.eventType === 'penalti-seri') delay *= 2.1;
+      // Seri penaltılar: atmosferli ama sürüklenmeyen tempo
+      if (next.cue.eventType === 'penalti-seri') delay *= 1.6;
       const timer = setTimeout(() => advanceReveal(), delay / speed);
       return () => clearTimeout(timer);
     }
@@ -460,6 +627,30 @@ export function MatchSimulationScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursor]);
+
+  // Kırmızı kart / ciddi sakatlık: MAÇ DURUR, söz teknik direktörde
+  useEffect(() => {
+    if (!session) return;
+    const evts = revealedEvents(session, cursor);
+    if (processedRef.current === null) {
+      // Ekrana dönüşte (devre arası vb.) eski olaylar yeniden tetiklenmesin
+      processedRef.current = evts.length;
+      return;
+    }
+    for (let i = processedRef.current; i < evts.length; i++) {
+      const e = evts[i];
+      if (e.card === 'red' && e.defendingTeam === 'home') {
+        setPaused(true);
+        setNotice('🟥 Kırmızı kart, eksik kaldık! Dizilişi toparlamak için kenara talimat verebilirsin.');
+      }
+      if (e.result === 'injury' && e.attackingTeam === 'home' && session.sim.home.pendingForcedSubPos) {
+        setPaused(true);
+        setSidelineOpen(true);
+      }
+    }
+    processedRef.current = evts.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor, session]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
@@ -539,12 +730,48 @@ export function MatchSimulationScreen() {
         📋 {homeActive} · {awayActive}
       </div>
 
+      {/* Eksik oyuncu: kırmızı / değişiklik yapılamayan sakatlık */}
+      {(session.sim.home.info.players.length < 6 || session.sim.away.info.players.length < 6) && (
+        <div className="text-center text-[10px] font-score uppercase tracking-widest text-vermil font-bold mt-0.5">
+          {session.sim.home.info.players.length < 6 &&
+            `🟥 ${session.sim.home.info.teamName} sahada ${session.sim.home.info.players.length} kişi`}
+          {session.sim.home.info.players.length < 6 && session.sim.away.info.players.length < 6 && ' · '}
+          {session.sim.away.info.players.length < 6 &&
+            `🟥 ${session.sim.away.info.teamName} sahada ${session.sim.away.info.players.length} kişi`}
+        </div>
+      )}
+
       {/* Canlı saha: top anlatımla eşzamanlı süzülür */}
       <div className="mt-1">
         <LivePitch home={session.sim.home.info} away={session.sim.away.info} cue={cueLine?.cue ?? null} />
       </div>
 
       <Timeline events={revealed} minute={minute} />
+
+      {/* Kırmızı kart uyarısı: maç durdu, karar teknik direktörün */}
+      {notice && (
+        <div className="news-card p-3 mt-2 border-2 border-vermil flex items-center gap-2 flex-wrap">
+          <span className="text-[13px] font-semibold text-vermil flex-1 min-w-[180px]">{notice}</span>
+          <button
+            className="btn-press text-xs px-3 py-1.5"
+            onClick={() => {
+              setNotice(null);
+              setSidelineOpen(true);
+            }}
+          >
+            📣 {t('match.sideline')}
+          </button>
+          <button
+            className="btn-outline text-xs px-3 py-1.5"
+            onClick={() => {
+              setNotice(null);
+              setPaused(false);
+            }}
+          >
+            ▶ {t('match.resume')}
+          </button>
+        </div>
+      )}
 
       {/* Muhabir sütunu */}
       <div className="news-card mt-2">
@@ -666,6 +893,7 @@ export function MatchSimulationScreen() {
           onClose={() => {
             setSidelineOpen(false);
             setPaused(false);
+            setNotice(null);
           }}
         />
       )}

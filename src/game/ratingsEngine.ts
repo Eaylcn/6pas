@@ -44,13 +44,14 @@ export function computeMatchRatings(events: MatchEvent[], state: SimTeamState, s
     switch (e.result) {
       case 'goal':
         if (attacking) {
-          bump(first, 1.2, 'goal');
-          if (second && second !== first) bump(second, 0.6, 'assist');
+          bump(first, 1.0, 'goal');
+          if (second && second !== first) bump(second, 0.5, 'assist');
         }
-        if (defending) bump(gkId, -0.2); // kaleci golü yedi
+        if (defending) bump(gkId, -0.35); // kaleci golü yedi
         break;
       case 'save':
-        if (defending) bump(gkId, 0.6, 'save');
+        // Kurtarış değerli ama not şişirmez — kaleci golsüz maçı temiz maç bonusuyla taçlandırır
+        if (defending) bump(gkId, 0.35, 'save');
         if (attacking) bump(first, 0.1); // isabetli şut yine de katkı
         break;
       case 'miss':
@@ -58,7 +59,7 @@ export function computeMatchRatings(events: MatchEvent[], state: SimTeamState, s
         break;
       case 'blocked':
       case 'defended':
-        if (defending) bump(third, 0.4);
+        if (defending) bump(third, 0.3);
         break;
       case 'corner-won':
         if (attacking) bump(first, 0.15);
@@ -100,7 +101,7 @@ export function computeMatchRatings(events: MatchEvent[], state: SimTeamState, s
     let cleanSheet = 0;
     if (isGoalkeeper(player)) {
       const conceded = events.filter((e) => e.defendingTeam === side && e.result === 'goal').length;
-      if (conceded === 0) cleanSheet = 0.5;
+      if (conceded === 0) cleanSheet = 0.35;
     }
     return {
       player,

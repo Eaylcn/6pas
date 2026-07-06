@@ -215,6 +215,8 @@ export interface MatchEvent {
   subInId?: string;
   /** Gol duran toptan mu geldi (P: penaltı, SV: serbest vuruş) */
   setPiece?: 'pen' | 'fk';
+  /** Maç içi penaltıda vuruş detayı (anlatım + görsel uyumu) */
+  pen?: PenaltyDetail;
 }
 
 export interface HalftimeState {
@@ -252,11 +254,26 @@ export interface WeatherModifier {
   chemistryEffect: number;
 }
 
+/** Penaltı vuruş detayı — anlatım ve canlı kale sahnesi AYNI kaynaktan beslenir */
+export type PenSide = 'L' | 'C' | 'R';
+export interface PenaltyDetail {
+  /** Vuruşun gittiği yön */
+  shotX: PenSide;
+  /** Üst köşe mi, yerden mi */
+  high: boolean;
+  /** Kalecinin hamlesi (C = yerinde kaldı) */
+  diveX: PenSide;
+  /** Kaçan vuruşun şekli */
+  out?: 'bar' | 'post';
+}
+
 export interface PenaltyKickLine {
   text: string;
   emphasis: 'normal' | 'suspense' | 'goal' | 'save' | 'miss';
   /** Vuruşu kullanan taraf — canlı saha ve takım etiketi için */
   side?: 'home' | 'away';
+  /** Sonuç satırında vuruş detayı (görsel sahne bununla oynar) */
+  pen?: PenaltyDetail;
 }
 
 export interface PenaltyShootoutResult {

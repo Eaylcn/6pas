@@ -1,6 +1,6 @@
 // Doğal maç anlatımı motoru.
 // Altın kural: mekanik hiçbir terim (perk adı, zar, bonus, skor hesabı) metne sızmaz.
-import type { EventResult, MatchEventType } from '../types';
+import type { EventResult, MatchEventType, PenaltyDetail } from '../types';
 import type { Rng } from '../utils/random';
 
 export interface NarrationContext {
@@ -378,6 +378,24 @@ const penaltyCallLines: string[] = [
   "{minute}' itirazlar sonuç vermedi; karar net: beyaz nokta!",
 ];
 
+// Maç içi penaltı sonuçları — vuruş detayına göre (canlı kale sahnesiyle birebir uyumlu)
+const penResultBanks: Record<string, string[]> = {
+  goalHigh: ['GOOOL! {attacker} topu üst köşeye çaktı, {gk} çaresiz!', 'GOOOL! Üst köşeye nokta atışı — kaleci ters tarafa uçtu!'],
+  goalLow: ['GOOOL! {attacker} yerden köşeye… {gk} ters köşede kaldı!', 'GOOOL! Sert ve yerden, direğin dibinden içeri!'],
+  goalCenter: ['GOOOL! {gk} köşeye uçtu, {attacker} topu ortadan ağlara bıraktı!', 'GOOOL! Ortaya soğukkanlı bir vuruş; kaleci çoktan yatmıştı!'],
+  saveHigh: ['{gk} KURTARDI! Uçarak üst köşeden çıkardı!', 'Müthiş refleks! {gk} üst köşeye giden topu tek elle çeldi!'],
+  saveLow: ['{gk} KURTARDI! Yerden gelen vuruşu köşede kapattı!', '{gk} KURTARDI! Ayaklarıyla kapattı, tehlike geçti!'],
+  saveCenter: ['{gk} KURTARDI! Yerinden kımıldamadı; {attacker} ortaya vurmuştu!', '{gk} vuruşu okudu, ortadan gelen topu göğsünde topladı!'],
+  missBar: ['{attacker} topu üst direğin üzerinden aşırdı! Auta gitti!', 'Ve vuruş… kalenin üstünden auta! {attacker} ellerini dizlerine koydu.'],
+  missPost: ['DİREK! {attacker} vurdu, top direkten oyun alanına döndü!', 'Top direğe çarpıp dışarı! Santimlerle gol yok!'],
+};
+
+function penResultKey(result: EventResult, pen: PenaltyDetail): string {
+  if (result === 'goal') return pen.shotX === 'C' ? 'goalCenter' : pen.high ? 'goalHigh' : 'goalLow';
+  if (result === 'save') return pen.shotX === 'C' ? 'saveCenter' : pen.high ? 'saveHigh' : 'saveLow';
+  return pen.out === 'post' ? 'missPost' : 'missBar';
+}
+
 const injuryBank: string[] = [
   '{attacker} yerde kaldı… Sağlık ekibi hemen sahada.',
   'Oyun durdu; {attacker} acı içinde. Kenar yönetimi endişeli.',
@@ -474,8 +492,8 @@ export interface NarrationEngine {
   foulLines(ctx: NarrationContext, card: 'yellow' | 'red' | null, secondYellow: boolean): string[];
   /** Serbest vuruş: hazırlık + şut + gerilim + sonuç */
   freeKickLines(ctx: NarrationContext, result: EventResult): string[];
-  /** Maç içi penaltı: karar + atış + sonuç */
-  penaltyLines(ctx: NarrationContext, result: EventResult): string[];
+  /** Maç içi penaltı: karar + atış + sonuç (pen: vuruş detayı, görselle uyum) */
+  penaltyLines(ctx: NarrationContext, result: EventResult, pen?: PenaltyDetail): string[];
   /** Sakatlık satırları */
   injuryLines(ctx: NarrationContext): string[];
   /** Oyuncu değişikliği satırı (helper=çıkan, attacker=giren) */
@@ -591,13 +609,18 @@ export function createNarrationEngine(rng: Rng): NarrationEngine {
       return lines;
     },
 
-    penaltyLines(ctx, result) {
+    penaltyLines(ctx, result, pen) {
       const lines = [
         fill(pickFresh(rng, penaltyCallLines, used), ctx),
         fill(`{attacker} topu noktaya dikti… Kaleci {gk} çizgide bekliyor.`, ctx),
         fill(pickFresh(rng, suspenseBank.close, used), ctx),
       ];
-      lines.push(...resultLines('penalti', result, ctx));
+      // Vuruş detayı varsa anlatım görsel sahneyle birebir aynı hikâyeyi anlatır
+      if (pen && (result === 'goal' || result === 'save' || result === 'miss')) {
+        lines.push(fill(pickFresh(rng, penResultBanks[penResultKey(result, pen)], used), ctx));
+      } else {
+        lines.push(...resultLines('penalti', result, ctx));
+      }
       return lines;
     },
 

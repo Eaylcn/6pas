@@ -7,6 +7,7 @@ import { StylePicker } from './TacticsSetupScreen';
 import { PitchView, type PitchSlotView } from '../components/PitchView';
 import { MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { useGameStore } from '../store/useGameStore';
+import { AssistantAdviceCard } from './MatchSimulationScreen';
 
 export function HalfTimeScreen() {
   const {
@@ -74,6 +75,9 @@ export function HalfTimeScreen() {
           </p>
         ))}
       </div>
+
+      {/* Yardımcı antrenör: gidişata göre öneriler, tek tıkla uygula */}
+      <AssistantAdviceCard context="HT" />
 
       <div className="grid md:grid-cols-2 gap-4 mb-5">
         <div className="news-card p-4">

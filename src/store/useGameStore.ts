@@ -27,14 +27,17 @@ import { calculateTeamChemistry } from '../game/chemistryEngine';
 import {
   calculateTeamPower,
   createMatchSim,
+  performInjuryReplacement,
   performSub,
   pickCriticalMoment,
   pickManOfTheMatch,
   planPhaseMinutes,
   produceEvent,
+  reassignPosition,
   simulatePenaltyShootout,
   type MatchSim,
 } from '../game/matchEngine';
+import type { AssistantAction } from '../game/assistantEngine';
 import { generateHalfTimeSummary, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { calculateRunPoints } from '../game/scoringEngine';
 import { buildMatchReport } from '../game/matchReport';
@@ -121,6 +124,14 @@ interface GameState {
   halftimeSetPlan: (updates: Partial<TacticalPlan>) => void;
   makeSubstitution: (outId: string, inId: string) => string | null;
   sidelineTacticChange: (style: PlayStyle | null, plan: Partial<TacticalPlan> | null) => string | null;
+  /** Sakat çıkan oyuncunun yerine kulübeden isim sokar (zorunlu değişiklik) */
+  makeInjuryReplacement: (inId: string) => string | null;
+  /** Zorunlu değişiklikten vazgeç: eksik oynamaya devam */
+  dismissForcedSub: () => void;
+  /** Maç içi mevki kaydırma (ör. kırmızı sonrası ortasahacıyı savunmaya çek) */
+  sidelinePositionChange: (playerId: string, newPos: FieldPosition) => string | null;
+  /** Yardımcı antrenör önerisini tek tıkla uygular */
+  applyAssistantAction: (action: AssistantAction, context: 'HT' | 'LIVE') => string | null;
 
   finishMatch: () => Promise<void>;
   afterResult: () => Promise<void>;
@@ -513,6 +524,51 @@ export const useGameStore = create<GameState>((set, get) => ({
       },
     });
     return null;
+  },
+
+  makeInjuryReplacement: (inId) => {
+    const { session } = get();
+    if (!session) return 'Aktif maç yok';
+    const home = session.sim.home;
+    if (!home.pendingForcedSubPos) return 'Bekleyen zorunlu değişiklik yok';
+    if (home.subsUsed >= MAX_SUBSTITUTIONS) return 'Değişiklik hakkı kalmadı';
+    if (!performInjuryReplacement(home, inId)) return 'Bu oyuncu oyuna giremez';
+    set({ session: { ...session } });
+    return null;
+  },
+
+  dismissForcedSub: () => {
+    const { session } = get();
+    if (!session) return;
+    session.sim.home.pendingForcedSubPos = null;
+    set({ session: { ...session } });
+  },
+
+  sidelinePositionChange: (playerId, newPos) => {
+    const { session } = get();
+    if (!session) return 'Aktif maç yok';
+    if (!reassignPosition(session.sim.home, playerId, newPos)) return 'Mevki değişikliği yapılamadı';
+    set({ session: { ...session } });
+    return null;
+  },
+
+  applyAssistantAction: (action, context) => {
+    switch (action.kind) {
+      case 'sub':
+        if (!action.outId || !action.inId) return 'Öneri eksik';
+        return get().makeSubstitution(action.outId, action.inId);
+      case 'position':
+        if (!action.playerId || !action.newPos) return 'Öneri eksik';
+        return get().sidelinePositionChange(action.playerId, action.newPos);
+      case 'plan': {
+        if (!action.plan) return 'Öneri eksik';
+        if (context === 'HT') {
+          get().halftimeSetPlan(action.plan);
+          return null;
+        }
+        return get().sidelineTacticChange(null, action.plan);
+      }
+    }
   },
 
   finishMatch: async () => {

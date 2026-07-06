@@ -32,17 +32,19 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 ### Maç motoru (event-bazlı, sonuç önceden belli değil)
 - d20 + stat + perk + kaptan + taktik + kimya; tüm hesap gizli, anlatım doğal Türkçe yayın dili
 - **Duran toplar**: faul → serbest vuruş / penaltı zinciri; korner takip pozisyonları
-- **Kartlar**: sarı/çift sarı/direkt kırmızı (5 kişi kalma cezası) · **Sakatlık** + zorunlu oto değişiklik
+- **Kartlar**: sarı/çift sarı/direkt kırmızı — kırmızıda **maç durur**, eksik oynamanın etkisi hissedilir ve skorbordda "sahada 5 kişi" rozeti çıkar
+- **Sakatlık**: kullanıcı takımında **zorunlu değişiklik için maç otomatik durur** (farklı mevkiden oyuncu da girebilir); ghost rakipte oto değişiklik
 - **Gerginlik/kavga** olayları (💢) · Ghost rakibin taktiksel oto değişikliği
-- 3 değişiklik hakkı: devre arası + **maç içi "Kenara Talimat"** (duraklat → değişiklik/taktik)
+- 3 değişiklik hakkı: devre arası + **maç içi "Kenara Talimat"** (değişiklik / taktik / **mevki kaydırma**: ör. kırmızı sonrası ortasahacıyı savunmaya çek)
+- 🧢 **Yardımcı antrenör**: devre arası ve kenara talimatta gidişata göre öneri (plan/değişiklik/mevki veya moral yorumu) + tek tık **Uygula**
 - Taktik kaymaları anlatıma "📋 kenar notu" düşer; skorbord altında aktif taktikler
 - **Perkler güce/nadirliğe göre dağılır** (tavan 2): sıradan oyuncular çoğunlukla perksiz, pro 1, yıldız 1-2, efsane/ikon 2; tetiklenince "✍ Muhabir notu: {perk} imzası — {oyuncu}"
 
 ### Maç ekranı
 - **Canlı saha**: top anlatımla eşzamanlı süzülür (golde metinle birlikte ağlara, poz sonraki satıra dek ekranda kalır)
-- Penaltılarda (maç içi + seri) **önden kale sahnesi**: direkler + ağ + penaltı noktası; eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalakalır, kaçan top üstten auta gider
+- Penaltılarda (maç içi + seri) **önden kale sahnesi**: direkler + ağ + penaltı noktası; eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalakalır. Vuruşlar üst/yerden köşelere, ortaya, direğe ve auta gider — **anlatım ve görsel her vuruşta birebir aynı hikâyeyi anlatır**
 - **Maç saati dakika dakika ilerler**, olaylar dakikası gelince düşer
-- **Canlı kadro panelleri**: PC'de sağ/sol, mobilde altta — oyuncular **anlık reytingleriyle** (SofaScore tarzı)
+- **Canlı kadro panelleri**: PC'de sağ/sol, mobilde altta — oyuncular **anlık reytingleriyle** (SofaScore tarzı, kaleci notları dengeli) + **durum ikonları** (🟨🟥⚕️🔁, oyundan çıkan soluk)
 - Timeline (⚽🟨🟥⚕🔁💢), golcü listesi ((P)/(SV) imli), momentum ibresi, GOOOL bandı + gol kupürü, takım etiketli/renk şeritli satırlar, TD isimleri, hız 1x/2x + dokun-ilerle + ileri sar
 
 ### Maç sonu: "Ertesi Sabahın Gazetesi"
