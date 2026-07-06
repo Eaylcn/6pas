@@ -13,6 +13,7 @@ export function HomeDashboard() {
   const goto = useGameStore((s) => s.goto);
   const startNewTeamFlow = useGameStore((s) => s.startNewTeamFlow);
   const [clippings, setClippings] = useState<MatchClipping[]>([]);
+  const [resetArmed, setResetArmed] = useState(false);
 
   useEffect(() => {
     void getClippings().then(setClippings);
@@ -74,17 +75,28 @@ export function HomeDashboard() {
         ) : (
           <span />
         )}
-        <button
-          className="underline text-ink-faint hover:text-vermil"
-          onClick={() => {
-            if (window.confirm('TÜM oyun verisi silinecek (profil, kadro, puanlar). Emin misin?')) {
-              resetAllData();
-              window.location.reload();
-            }
-          }}
-        >
-          🗑 Sıfırla
-        </button>
+        {/* window.confirm iframe'de engellenebildiği için iki aşamalı inline onay */}
+        {resetArmed ? (
+          <span className="flex items-center gap-2">
+            <span className="text-vermil font-bold">Tüm veri silinsin mi?</span>
+            <button
+              className="underline text-vermil font-bold"
+              onClick={() => {
+                resetAllData();
+                window.location.reload();
+              }}
+            >
+              EVET, SIFIRLA
+            </button>
+            <button className="underline" onClick={() => setResetArmed(false)}>
+              Vazgeç
+            </button>
+          </span>
+        ) : (
+          <button className="underline text-ink-faint hover:text-vermil" onClick={() => setResetArmed(true)}>
+            🗑 Sıfırla (debug)
+          </button>
+        )}
       </div>
 
       {clippings.length > 0 && (

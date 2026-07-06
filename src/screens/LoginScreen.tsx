@@ -4,7 +4,6 @@ import { SectionHeadline } from '../components/NewspaperShell';
 import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
 import { isRealModeEnabled, setRealMode, REAL_MODE_PASSWORD } from '../data/realMode';
-import { resetAllData } from '../services/storage';
 
 export function LoginScreen() {
   const [name, setName] = useState('');
@@ -93,18 +92,6 @@ export function LoginScreen() {
         )}
         {pwError && <p className="text-xs font-semibold text-vermil mt-1.5">Şifre yanlış.</p>}
       </div>
-
-      <button
-        className="w-full mt-4 text-[11px] font-score uppercase tracking-widest text-ink-faint hover:text-vermil transition-colors"
-        onClick={() => {
-          if (window.confirm('TÜM oyun verisi silinecek (profil, kadro, puanlar). Emin misin?')) {
-            resetAllData();
-            window.location.reload();
-          }
-        }}
-      >
-        🗑 Tüm Veriyi Sıfırla (debug)
-      </button>
     </div>
   );
 }

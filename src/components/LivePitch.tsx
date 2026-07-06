@@ -16,12 +16,26 @@ export interface BallCue {
 
 const WING_TYPES = new Set<string>(['dar-aci', 'korner', 'ters-top', 'calim', 'rabona']);
 
+/** Penaltıda topun gittiği köşe (deterministik): üst/alt */
+function penCornerY(cue: BallCue): number {
+  return (cue.minute * 7 + cue.idx) % 2 === 0 ? 25 : 37;
+}
+
+/** Penaltı sahnesi: kaleci hamlesi — golde ters köşeye, kurtarışta topun köşesine uçar */
+export function penKeeperY(cue: BallCue | null): number {
+  if (!cue || !(cue.eventType === 'penalti-seri' || cue.eventType === 'penalti') || !cue.isResult) return 31;
+  const corner = penCornerY(cue);
+  if (cue.resultKind === 'save') return corner; // doğru köşe
+  return corner === 25 ? 37 : 25; // ters köşede kaldı
+}
+
 function ballPos(cue: BallCue | null): { x: number; y: number } {
   // Seri penaltılar: tek kalede (sağ kale) oynanır — yaklaşma → nokta → vuruş
   if (cue?.eventType === 'penalti-seri') {
     if (cue.isResult) {
-      if (cue.resultKind === 'goal') return { x: 96.5, y: 31 };
-      if (cue.resultKind === 'save') return { x: 93.5, y: 31 };
+      const y = penCornerY(cue);
+      if (cue.resultKind === 'goal') return { x: 96.8, y };
+      if (cue.resultKind === 'save') return { x: 93.5, y };
       return { x: 99.5, y: 7 }; // kaçan penaltı
     }
     return cue.idx === 0 ? { x: 80, y: 31 } : { x: 88, y: 31 }; // yaklaşma → penaltı noktası
@@ -68,6 +82,8 @@ function ballPos(cue: BallCue | null): { x: number; y: number } {
 export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: TeamMatchInfo; cue: BallCue | null }) {
   const pos = ballPos(cue);
   const goalDir = cue?.side === 'home' ? 1 : -1;
+  const penScene = cue?.eventType === 'penalti-seri' || cue?.eventType === 'penalti';
+  const keeperY = penKeeperY(cue);
 
   return (
     <svg viewBox="0 0 100 62" className="w-full news-card" role="img" aria-label="Canlı saha">
@@ -94,6 +110,13 @@ export function LivePitch({ home, away, cue }: { home: TeamMatchInfo; away: Team
           className="stroke-vermil goal-ring"
           strokeWidth="1"
         />
+      )}
+
+      {/* Penaltı sahnesinde kaleci: çizgide bekler, vuruşta köşeye uçar */}
+      {penScene && (
+        <g className="live-ball" style={{ transform: `translate(97.2px, ${keeperY}px)` }}>
+          <rect x="-0.9" y="-2.6" width="1.8" height="5.2" rx="0.9" className="fill-ink" opacity="0.85" />
+        </g>
       )}
 
       {/* top */}

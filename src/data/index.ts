@@ -20,6 +20,11 @@ export const goalkeepers = realMode ? realGoalkeepers : fakeGoalkeepers;
 
 export const allPlayers: AnyPlayer[] = [...fieldPlayers, ...goalkeepers];
 
+// Denge kuralı: bir oyuncuda en fazla 2 perk (belirginlik + denge)
+for (const p of [...fakeFieldPlayers, ...fakeGoalkeepers, ...realFieldPlayers, ...realGoalkeepers]) {
+  if (p.perks.length > 2) p.perks = p.perks.slice(0, 2);
+}
+
 // Arama haritası HER İKİ havuzu da içerir: mod değişse bile eski kayıtlı
 // run'lardaki oyuncu id'leri çözülebilir kalır.
 const playerMap = new Map<string, AnyPlayer>(

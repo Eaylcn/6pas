@@ -15,6 +15,42 @@ import {
   type MatchSession,
 } from '../store/useGameStore';
 import { getActiveTacticByScoreState as getActiveTactic } from '../game/tacticsEngine';
+import { computeMatchRatings, ratingTone } from '../game/ratingsEngine';
+import type { SimTeamState } from '../game/matchEngine';
+
+const PHASE_START: Record<MatchPhase, number> = { H1: 1, H2: 31, ET: 61, PENS: 70 };
+const PHASE_END: Record<MatchPhase, number> = { H1: 30, H2: 60, ET: 70, PENS: 70 };
+
+/** Canlı reytingli kadro paneli (PC: yan sütun, mobil: log altı) */
+function RosterPanel({ state, side, events }: { state: SimTeamState; side: 'home' | 'away'; events: MatchEvent[] }) {
+  const ratings = computeMatchRatings(events, state, side);
+  const toneClass = { great: 'bg-grass text-paper', good: 'bg-ink text-paper', poor: 'bg-vermil text-paper' };
+  return (
+    <div className="news-card p-2.5">
+      <div
+        className={`text-[10px] font-score uppercase tracking-widest mb-1.5 truncate ${
+          side === 'home' ? 'text-grass-deep' : 'text-vermil'
+        }`}
+      >
+        {state.info.teamName}
+      </div>
+      <div className="space-y-1">
+        {ratings.map((r) => {
+          const parts = r.player.name.split(' ');
+          const short = parts.length > 1 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : r.player.name;
+          return (
+            <div key={r.player.id} className="flex items-center gap-1.5 text-[11px]">
+              <span className={`font-score font-bold px-1 min-w-[26px] text-center ${toneClass[ratingTone(r.rating)]}`}>
+                {r.rating.toFixed(1)}
+              </span>
+              <span className="truncate">{short}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface FlatLine {
   text: string;
@@ -359,32 +395,49 @@ export function MatchSimulationScreen() {
   const visible = lines.slice(0, cursor);
   const done = session ? cursor >= totalLines(session) && session.plannedMinutes.length === 0 : false;
 
-  // Faz değişince end kilidi açılır
+  // Maç saati: dakika dakika ilerler, olaylar dakikası gelince düşer
+  const [clock, setClock] = useState(1);
   useEffect(() => {
     endingRef.current = false;
+    setClock(PHASE_START[phase]);
   }, [phase]);
+
+  useEffect(() => {
+    if (!session || paused || sidelineOpen || phase === 'PENS') return;
+    if (clock >= PHASE_END[phase]) return;
+    // Sıradaki satır saati bekliyorsa saat akar; olay anındayken saat olayla durur
+    const next = lines[cursor];
+    const waitingForEvent = next && next.minute <= clock;
+    if (waitingForEvent) return;
+    const timer = setTimeout(() => setClock((c) => Math.min(c + 1, PHASE_END[phase])), 620 / speed);
+    return () => clearTimeout(timer);
+  }, [session, clock, cursor, lines, paused, sidelineOpen, speed, phase]);
 
   // Akış motoru
   useEffect(() => {
     if (!session || paused || sidelineOpen) return;
     if (cursor < lines.length) {
       const next = lines[cursor];
+      // Dakikaya göre olay: satır, maç saati o dakikaya gelmeden düşmez
+      if (phase !== 'PENS' && next.minute > clock) return;
       let delay = 1400;
       if (next.isSuspense) delay = 1900;
       if (next.isResult) delay = 2100;
       if (next.isGoal) delay = 2300;
       // Seri penaltılar: nefes kesen, ağır tempo
-      if (next.cue.eventType === 'penalti-seri') delay *= 1.6;
+      if (next.cue.eventType === 'penalti-seri') delay *= 2.1;
       const timer = setTimeout(() => advanceReveal(), delay / speed);
       return () => clearTimeout(timer);
     }
     if (session.plannedMinutes.length > 0) {
-      const timer = setTimeout(() => produceNext(), 500 / speed);
+      const timer = setTimeout(() => produceNext(), 400 / speed);
       return () => clearTimeout(timer);
     }
+    // Yarı bitişi: satırlar bitti + saat yarı sonuna ulaştı
+    if (phase !== 'PENS' && clock < PHASE_END[phase]) return;
     if (!endingRef.current) {
       endingRef.current = true;
-      const timer = setTimeout(() => void endPhase(), 1400);
+      const timer = setTimeout(() => void endPhase(), 1200);
       return () => {
         // Zamanlayıcı iptal edilirse (duraklat/panel) kilit de açılmalı —
         // yoksa faz sonu bir daha tetiklenmez ve akış donar
@@ -393,7 +446,7 @@ export function MatchSimulationScreen() {
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, cursor, lines.length, paused, sidelineOpen, speed]);
+  }, [session, cursor, lines.length, paused, sidelineOpen, speed, clock, phase]);
 
   // GOOOL bandı
   useEffect(() => {
@@ -419,7 +472,7 @@ export function MatchSimulationScreen() {
   const upcomingLine = lines[cursor];
   const cueLine = upcomingLine && !upcomingLine.cue.isResult ? upcomingLine : last;
   const score = last?.score ?? [session.sim.home.goals, session.sim.away.goals];
-  const minute = last?.minute ?? (phase === 'H1' ? 1 : phase === 'H2' ? 31 : phase === 'ET' ? 61 : 70);
+  const minute = phase === 'PENS' ? 70 : Math.max(clock, last?.minute ?? PHASE_START[phase]);
   const revealed = revealedEvents(session, cursor);
   const goals = revealed.filter((e) => e.result === 'goal');
 
@@ -432,7 +485,12 @@ export function MatchSimulationScreen() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto relative">
+    <div className="max-w-5xl mx-auto relative lg:grid lg:grid-cols-[185px_minmax(0,1fr)_185px] lg:gap-4 lg:items-start">
+      {/* PC: sol kadro paneli */}
+      <div className="hidden lg:block lg:sticky lg:top-4">
+        <RosterPanel state={session.sim.home} side="home" events={revealed} />
+      </div>
+      <div className="relative">
       {goalBand && (
         <div className="goal-band fixed top-0 left-0 right-0 z-40 bg-vermil text-paper text-center py-3 font-headline font-black text-2xl uppercase tracking-wider shadow-card">
           GOOOL!
@@ -583,9 +641,21 @@ export function MatchSimulationScreen() {
         >
           📣 {t('match.sideline')}
         </button>
-        <button className="btn-outline text-xs px-3 py-1.5 ml-auto" onClick={() => revealAllPhase()}>
+        <button
+          className="btn-outline text-xs px-3 py-1.5 ml-auto"
+          onClick={() => {
+            setClock(PHASE_END[phase]);
+            revealAllPhase();
+          }}
+        >
           ⏩ {t('match.skipHalf')}
         </button>
+      </div>
+
+      {/* Mobil: kadrolar log altında */}
+      <div className="lg:hidden grid grid-cols-2 gap-2 mt-3">
+        <RosterPanel state={session.sim.home} side="home" events={revealed} />
+        <RosterPanel state={session.sim.away} side="away" events={revealed} />
       </div>
 
       {sidelineOpen && (
@@ -596,6 +666,12 @@ export function MatchSimulationScreen() {
           }}
         />
       )}
+      </div>
+
+      {/* PC: sağ kadro paneli */}
+      <div className="hidden lg:block lg:sticky lg:top-4">
+        <RosterPanel state={session.sim.away} side="away" events={revealed} />
+      </div>
     </div>
   );
 }
