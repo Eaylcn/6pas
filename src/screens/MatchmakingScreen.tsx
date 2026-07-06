@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { SectionHeadline } from '../components/NewspaperShell';
 import { PlayerCard } from '../components/PlayerCard';
 import { PitchView, ChemistryLegend, type PitchSlotView } from '../components/PitchView';
+import { tournamentRoundLabel } from '../game/tournamentEngine';
 import { useGameStore } from '../store/useGameStore';
 
 export function MatchmakingScreen() {
@@ -31,6 +32,11 @@ export function MatchmakingScreen() {
   return (
     <div className="max-w-4xl mx-auto">
       <SectionHeadline sub={t('matchmaking.vs')}>{t('matchmaking.found')}</SectionHeadline>
+      {run.mode === 'tournament' && (
+        <div className="text-center mb-3">
+          <span className="tag-label text-gold border-gold">🏆 KUPA YOLU — {tournamentRoundLabel(run.wins)}</span>
+        </div>
+      )}
       <div className="news-card p-4 mb-4 text-center">
         <span className="font-headline font-bold text-xl">{run.teamName}</span>
         <span className="font-score text-ink-soft mx-3 text-lg">—</span>

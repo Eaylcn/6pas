@@ -14,16 +14,18 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 ## Mevcut Durum (v0.4)
 
 ### Oyun döngüsü
-- Mock login (menajer adı) → takım ismi → diziliş (2-2-1 / 1-2-2 / 1-3-1 / 2-1-2) → oyun tarzı + taktik planı (kazanırken/beraberken/kaybederken) → draft → maç → puan/seri → leaderboard
-- Kaybedince run biter, kadro dağılır (roguelike); beraberlik yok: **uzatma (61'-70') → seri penaltılar**
-- Puan: galibiyet 100 + seri/clean sheet/3+ gol/underdog/İkon kaptan bonusları
+- Mock login (menajer adı) → **mod seçimi** → takım ismi → diziliş (2-2-1 / 1-2-2 / 1-3-1 / 2-1-2) → oyun tarzı + taktik planı → draft → maç → puan → tablo
+- **📰 Klasik Mod**: kaybedince run biter, kadro dağılır (roguelike); seri uzadıkça puan katlanır
+- **🏆 Turnuva Modu**: Son 32 → Son 16 → Çeyrek → Yarı → FİNAL. Her tur tek maç, kaybeden elenir; tur ilerledikçe rakip güç bandı yükselir. Tur atlama bonusları + şampiyonluk 300p
+- Beraberlik yok: **uzatma (61'-70') → seri penaltılar**
+- Puan: galibiyet 100 + seri/clean sheet/3+ gol/underdog/İkon kaptan bonusları (+turnuva tur bonusları)
 
 ### Draft
 - Saha krokisi üzerinde slot seçimi; slot başına **popup'ta 3 aday** (pozisyona özel), seçim zorunlu
 - Draft başına **1 "Yeniden Çevir"** hakkı · İlk seçim **kaptan** · "Seçim X/10" ilerleme
 - **4 yedek zorunlu: 1 GK + 1 DEF + 1 MID + 1 ATK**
 - Aday kartlarında: stat çubukları, perk açıklamaları, yaş, **kimya delta rozeti** (+6 gibi)
-- Kadro İnceleme'de **düzenleme modu**: yedek ↔ ilk 6 takası; mevki dışı takas uyarı verir ve kimyayı bozar (-8/oyuncu); kaptan kulübeye gidemez, kaleye sadece kaleci
+- Kadro İnceleme'de **düzenleme modu**: yedek ↔ ilk 6 takası; mevki dışı takas uyarı verir ve kimyayı bozar (-8/oyuncu); kaptan kulübeye oturabilir (uyarı: sahada değilken kaptan katkısı işlemez); kaleye sadece kaleci
 
 ### Kimya
 - 0-100; kulüp çifti +8, lig çifti +3, uyruk çifti +3, kaptan bağları +2
@@ -53,9 +55,11 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - **İmza Hareketleri** (maça dokunan perkler ×sayaç) · **Oyuncu Karneleri** (4.5-10.0)
 - Ana sayfada son maç **kupür arşivi**
 
-### Modlar & Tema
+### Evren, Tablolar & Tema
+- ⭐ **Tek evren**: 20 kulüp, **2025-26 gerçek kadroları** (~210 oyuncu, güncel OVR'lar, yıldızlara imza perkleri) her zaman açık — fake havuz yalnızca eski kayıtların çözülmesi için arşivde
+- 🥇 **İki ayrı puan tablosu**: Klasik (puan + en iyi seri) ve Turnuva (puan + en iyi aşama) — sekmeli ekran
+- 📒 **Geçmişim — Takım Defteri**: biten her run kaydedilir; hangi takımla, hangi kaptanla, nereye kadar gidildiği ana sayfada listelenir
 - ☾ **Gece Baskısı** koyu tema (masthead'den geçiş)
-- ⭐ **Gerçek Yıldızlar Modu** (test şifresi: `123`): 20 kulüp, **2025-26 kadroları** (~210 gerçek oyuncu, güncel OVR'lar, yıldızlara imza perkleri). Kapatınca fake evrene döner; kayıtlar iki modda da çalışır.
 - 🗑 Ana sayfada **debug sıfırlama** (iki aşamalı onay, tüm veriyi siler)
 
 ### Denge (1000 maç, kalibre)
@@ -78,6 +82,7 @@ src/
 Detaylı planlar: [`docs/GELISTIRME_PLANI.md`](docs/GELISTIRME_PLANI.md) · [`docs/UI_GUNCELLEME_PLANI.md`](docs/UI_GUNCELLEME_PLANI.md)
 
 ## Yol Haritası
-1. **Kayıt olma / hesap sistemi** (mock login → gerçek auth)
-2. **Online PvP maç** — plan hazır (UI planı §9): sunucu otoriteli senkron yayın, PvP'de hız/atlama kapalı, mola hakkı + devre arası penceresi
-3. Ranked (Elo alanları hazır) · Turnuva · Hava koşulları (WeatherModifier iskeleti motorda)
+1. **Paylaşılan canlı puan tablosu** — arkadaşlar aynı tabloda yarışsın: küçük bir backend gerekir (ör. Vercel/Netlify deploy + Supabase); `leaderboardService` imzaları hazır, mock yerine gerçek API bağlanacak
+2. **Kayıt olma / hesap sistemi** (mock login → gerçek auth)
+3. **Online PvP maç** — plan hazır (UI planı §9): sunucu otoriteli senkron yayın, PvP'de hız/atlama kapalı, mola hakkı + devre arası penceresi
+4. Ranked (Elo alanları hazır) · Hava koşulları (WeatherModifier iskeleti motorda)

@@ -299,6 +299,8 @@ export interface LeaderboardEntry {
   username: string;
   totalPoints: number;
   bestStreak: number;
+  /** Turnuva tablosu: ulaşılan en iyi tur (kazanılan tur sayısı, 5 = şampiyon) */
+  bestStage?: number;
   totalWins: number;
   totalLosses: number;
   matchesPlayed: number;

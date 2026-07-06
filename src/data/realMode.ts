@@ -1,12 +1,9 @@
-// "Gerçek Yıldızlar Modu" — test amaçlı, şifreyle açılır.
+// Gerçek isim katmanı — tek evren: her açılışta uygulanır.
 // Motor/veri kimlikleri değişmez; yalnızca görünen isimler dönüştürülür:
-// İkonlar inspiredBy adını alır, fake kulüp/ligler gerçek karşılıklarına çevrilir.
+// İkonlar inspiredBy adını alır, kulüp/ligler gerçek karşılıklarına çevrilir.
 import { clubs } from './clubs';
 import { leagues } from './leagues';
 import { iconFieldPlayers, iconGoalkeepers } from './icons';
-
-const REAL_MODE_KEY = '6pas:realMode';
-export const REAL_MODE_PASSWORD = '123'; // test amaçlı geçici şifre
 
 const realLeagueNames: Record<string, string> = {
   tpc: 'Süper Lig',
@@ -41,23 +38,6 @@ const realClubNames: Record<string, string> = {
   'por-mare': 'Porto',
   'lis-azul': 'Benfica',
 };
-
-export function isRealModeEnabled(): boolean {
-  try {
-    return localStorage.getItem(REAL_MODE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function setRealMode(enabled: boolean): void {
-  try {
-    if (enabled) localStorage.setItem(REAL_MODE_KEY, '1');
-    else localStorage.removeItem(REAL_MODE_KEY);
-  } catch {
-    // depolama kapalıysa oturumluk kalır
-  }
-}
 
 /**
  * Uygulama açılışında (render'dan önce) bir kez çağrılır.

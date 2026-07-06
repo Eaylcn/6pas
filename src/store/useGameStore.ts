@@ -3,6 +3,7 @@ import type {
   AnyPlayer,
   BenchSlot,
   FieldPosition,
+  GameMode,
   MatchEvent,
   MatchRewards,
   PenaltyShootoutResult,
@@ -40,6 +41,14 @@ import {
 import type { AssistantAction } from '../game/assistantEngine';
 import { generateHalfTimeSummary, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { calculateRunPoints } from '../game/scoringEngine';
+import {
+  TOURNAMENT_CHAMPION_BONUS,
+  TOURNAMENT_TOTAL_ROUNDS,
+  tournamentPowerBoost,
+  tournamentRoundBonus,
+  tournamentRoundLabel,
+  tournamentStageResult,
+} from '../game/tournamentEngine';
 import { buildMatchReport } from '../game/matchReport';
 import * as runService from '../services/runService';
 import * as matchmakingService from '../services/matchmakingService';
@@ -68,6 +77,7 @@ interface GameState {
   run: Run | null;
 
   // Draft akışı
+  draftMode: GameMode;
   draftTeamName: string;
   draftFormationId: string;
   draftPlayStyle: PlayStyle;
@@ -91,6 +101,8 @@ interface GameState {
   penaltyScore: [number, number] | null;
   playerWon: boolean;
   playerDraw: boolean;
+  /** Turnuva kupası bu maçla kazanıldı */
+  playerChampion: boolean;
   manOfTheMatch: string | null;
   criticalMoment: string | null;
 
@@ -98,6 +110,8 @@ interface GameState {
   init: () => Promise<void>;
   goto: (screen: ScreenId) => void;
   startNewTeamFlow: () => void;
+  /** Mod seçiminden draft akışına giriş (klasik / turnuva) */
+  startDraftFlow: (mode: GameMode) => void;
   setTeamName: (name: string) => void;
   suggestTeamName: () => void;
   setFormation: (formationId: string) => void;
@@ -188,6 +202,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   booting: true,
   run: null,
 
+  draftMode: 'classic',
   draftTeamName: '',
   draftFormationId: '2-2-1',
   draftPlayStyle: 'dengeli',
@@ -209,6 +224,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   penaltyScore: null,
   playerWon: false,
   playerDraw: false,
+  playerChampion: false,
   manOfTheMatch: null,
   criticalMoment: null,
 
@@ -221,9 +237,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   goto: (screen) => set({ screen }),
 
+  startDraftFlow: (mode) => {
+    set({ draftMode: mode, screen: 'team-name' });
+  },
+
   startNewTeamFlow: () => {
     set({
+      draftMode: 'classic',
       draftTeamName: '',
+      playerChampion: false,
       draftFormationId: '2-2-1',
       draftPlayStyle: 'dengeli',
       draftPlan: defaultPlan,
@@ -321,7 +343,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const chemistry = calculateTeamChemistry(onField, newCaptainId);
       const run = await runService.createNewRun({
         userId: user.id,
-        mode: 'classic',
+        mode: state.draftMode,
         teamName: state.draftTeamName || 'İsimsiz Takım',
         formationId: state.draftFormationId,
         defaultPlayStyle: state.draftPlayStyle,
@@ -345,7 +367,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const fieldPlayer = getPlayer(fieldSlot.playerId);
     const benchPlayer = getPlayer(benchSlot.playerId);
 
-    if (fieldPlayer.id === run.captainId) return { error: 'Kaptan kulübeye gönderilemez.' };
     if (fieldSlot.position === 'GK' && benchPlayer.position !== 'GK')
       return { error: 'Kaleye yalnızca kaleci geçebilir.' };
     if (fieldSlot.position !== 'GK' && benchPlayer.position === 'GK')
@@ -362,11 +383,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     await runService.saveRun(updated);
     set({ run: updated });
 
-    const warning =
-      benchPlayer.position !== fieldSlot.position
-        ? `‼ ${benchPlayer.name} mevkisi dışında (${benchPlayer.position} → ${fieldSlot.position}). Takım kimyası bundan etkilendi.`
-        : undefined;
-    return { warning };
+    const warnings: string[] = [];
+    if (benchPlayer.position !== fieldSlot.position) {
+      warnings.push(
+        `‼ ${benchPlayer.name} mevkisi dışında (${benchPlayer.position} → ${fieldSlot.position}). Takım kimyası bundan etkilendi.`,
+      );
+    }
+    if (fieldPlayer.id === run.captainId) {
+      warnings.push(`Ⓒ Kaptan ${fieldPlayer.name} kulübede — sahada olmadığı sürece kaptan katkısı işlemez.`);
+    }
+    return { warning: warnings.length > 0 ? warnings.join(' ') : undefined };
   },
 
   findMatch: async () => {
@@ -374,7 +400,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!run) return;
     set({ screen: 'matchmaking', opponent: null, opponentFound: false });
     const me = playerTeamInfo(run);
-    const opponent = await matchmakingService.findOpponent(me.power, run.teamName);
+    // Turnuvada tur ilerledikçe rakip güç bandı yükselir
+    const target = me.power + (run.mode === 'tournament' ? tournamentPowerBoost(run.wins) : 0);
+    const opponent = await matchmakingService.findOpponent(target, run.teamName);
     set({ opponent, opponentFound: true });
   },
 
@@ -589,17 +617,59 @@ export const useGameStore = create<GameState>((set, get) => ({
       opponent: sim.away.info,
     });
 
+    // Turnuva: tur atlama bonusu + şampiyonluk
+    const isTournament = run.mode === 'tournament';
+    const champion = isTournament && won && run.wins + 1 >= TOURNAMENT_TOTAL_ROUNDS;
+    if (isTournament && won) {
+      rewards.breakdown.push({ reason: `${tournamentRoundLabel(run.wins)} turu geçildi`, points: tournamentRoundBonus(run.wins) });
+      rewards.total += tournamentRoundBonus(run.wins);
+      if (champion) {
+        rewards.breakdown.push({ reason: '🏆 Şampiyonluk', points: TOURNAMENT_CHAMPION_BONUS });
+        rewards.total += TOURNAMENT_CHAMPION_BONUS;
+      }
+    }
+
     const updatedRun: Run = won
-      ? await runService.continueRunAfterWin(run, rewards.total, rewards.newStreak)
+      ? champion
+        ? await runService.completeRun(run, rewards.total, rewards.newStreak)
+        : await runService.continueRunAfterWin(run, rewards.total, rewards.newStreak)
       : await runService.eliminateRun(run);
 
     await useUserStore.getState().applyMatchOutcome({
+      mode: isTournament ? 'tournament' : 'classic',
       pointsGained: rewards.total,
       won,
       lost: !won,
       streak: rewards.newStreak,
-      activeRunId: won ? updatedRun.id : null,
+      activeRunId: won && !champion ? updatedRun.id : null,
+      stageReached: isTournament ? (won ? run.wins + 1 : run.wins) : undefined,
     });
+
+    // Run kapandıysa geçmişe yaz: hangi takımla nereye kadar gidildi
+    if (!won || champion) {
+      let captainName: string | null = null;
+      try {
+        captainName = run.captainId ? getPlayer(run.captainId).name : null;
+      } catch {
+        captainName = null;
+      }
+      await historyService.addRunRecord({
+        id: run.id,
+        mode: run.mode,
+        teamName: run.teamName,
+        captainName,
+        wins: updatedRun.wins,
+        losses: updatedRun.losses,
+        resultLabel: isTournament
+          ? tournamentStageResult(run.wins, champion)
+          : updatedRun.wins === 0
+            ? 'İlk maçta elendi'
+            : `${updatedRun.wins} galibiyetlik seri`,
+        champion,
+        points: updatedRun.pointsEarned,
+        endedAt: Date.now(),
+      });
+    }
 
     // Kupür arşivine kaydet (Ana sayfa vitrini)
     const report = buildMatchReport({
@@ -622,12 +692,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     set({
-      run: won ? updatedRun : null,
+      run: won && !champion ? updatedRun : null,
       rewards,
       finalScore,
       penaltyScore: penalties ? [penalties.homeGoals, penalties.awayGoals] : null,
       playerWon: won,
       playerDraw: false,
+      playerChampion: champion,
       manOfTheMatch: pickManOfTheMatch(events, sim.home.info, sim.away.info),
       criticalMoment: penalties ? penalties.lines[penalties.lines.length - 1].text : pickCriticalMoment(events),
       screen: 'match-result',
@@ -635,9 +706,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   afterResult: async () => {
-    const { playerWon } = get();
+    const { playerWon, run } = get();
     set({
-      screen: playerWon ? 'squad-review' : 'home',
+      screen: playerWon && run ? 'squad-review' : 'home',
       session: null,
       opponent: null,
       opponentFound: false,

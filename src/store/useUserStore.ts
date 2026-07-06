@@ -6,28 +6,34 @@ import * as leaderboardService from '../services/leaderboardService';
 interface UserState {
   user: User | null;
   leaderboard: LeaderboardEntry[];
+  tournamentBoard: LeaderboardEntry[];
   initialized: boolean;
   init: () => Promise<void>;
   login: (username: string) => Promise<User>;
   refreshLeaderboard: () => Promise<void>;
   applyMatchOutcome: (input: {
+    mode: 'classic' | 'tournament';
     pointsGained: number;
     won: boolean;
     lost: boolean;
     streak: number;
     activeRunId: string | null;
+    /** Turnuvada ulaşılan tur (kazanılan tur sayısı) */
+    stageReached?: number;
   }) => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
   user: null,
   leaderboard: [],
+  tournamentBoard: [],
   initialized: false,
 
   init: async () => {
     const user = await authService.getCurrentUser();
-    const leaderboard = await leaderboardService.getClassicLeaderboard();
-    set({ user, leaderboard, initialized: true });
+    const leaderboard = await leaderboardService.getLeaderboard('classic');
+    const tournamentBoard = await leaderboardService.getLeaderboard('tournament');
+    set({ user, leaderboard, tournamentBoard, initialized: true });
   },
 
   login: async (username: string) => {
@@ -37,10 +43,13 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   refreshLeaderboard: async () => {
-    set({ leaderboard: await leaderboardService.getClassicLeaderboard() });
+    set({
+      leaderboard: await leaderboardService.getLeaderboard('classic'),
+      tournamentBoard: await leaderboardService.getLeaderboard('tournament'),
+    });
   },
 
-  applyMatchOutcome: async ({ pointsGained, won, lost, streak, activeRunId }) => {
+  applyMatchOutcome: async ({ mode, pointsGained, won, lost, streak, activeRunId, stageReached }) => {
     const user = get().user;
     if (!user) return;
     const updated: User = {
@@ -51,7 +60,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       classicLosses: user.classicLosses + (lost ? 1 : 0),
     };
     await authService.updateUser(updated);
-    const leaderboard = await leaderboardService.recordMatchResult({
+    const board = await leaderboardService.recordMatchResult(mode, {
       userId: user.id,
       username: user.username,
       pointsGained,
@@ -59,7 +68,9 @@ export const useUserStore = create<UserState>((set, get) => ({
       lost,
       streak,
       activeRunId,
+      stageReached,
     });
-    set({ user: updated, leaderboard });
+    if (mode === 'classic') set({ user: updated, leaderboard: board });
+    else set({ user: updated, tournamentBoard: board });
   },
 }));

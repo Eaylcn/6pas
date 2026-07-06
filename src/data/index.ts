@@ -2,7 +2,6 @@ import type { AnyPlayer, Position } from '../types';
 import { fieldPlayers as fakeFieldPlayers } from './players';
 import { goalkeepers as fakeGoalkeepers } from './goalkeepers';
 import { realFieldPlayers, realGoalkeepers } from './realPlayers';
-import { isRealModeEnabled } from './realMode';
 import { clubs as clubList } from './clubs';
 import { leagues as leagueList } from './leagues';
 
@@ -13,10 +12,10 @@ export { formations, getFormation } from './formations';
 export { teamNamePool } from './teams';
 export { allPerks, getPerk, perksForPosition } from './perks';
 
-// Aktif havuz: Gerçek Yıldızlar Modu açıksa tamamı gerçek kadrolar
-const realMode = isRealModeEnabled();
-export const fieldPlayers = realMode ? realFieldPlayers : fakeFieldPlayers;
-export const goalkeepers = realMode ? realGoalkeepers : fakeGoalkeepers;
+// Aktif havuz: 2025-26 gerçek kadroları (tek evren).
+// Fake havuz yalnızca eski kayıtların çözülmesi için arama haritasında tutulur.
+export const fieldPlayers = realFieldPlayers;
+export const goalkeepers = realGoalkeepers;
 
 export const allPlayers: AnyPlayer[] = [...fieldPlayers, ...goalkeepers];
 

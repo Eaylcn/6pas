@@ -9,10 +9,10 @@ import '@fontsource/source-sans-3/600.css';
 import './index.css';
 import { App } from './app/App';
 import { initTheme } from './app/theme';
-import { applyRealModeNames, isRealModeEnabled } from './data/realMode';
+import { applyRealModeNames } from './data/realMode';
 
 initTheme();
-if (isRealModeEnabled()) applyRealModeNames();
+applyRealModeNames(); // tek evren: gerçek kulüp/lig/oyuncu isimleri her zaman açık
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

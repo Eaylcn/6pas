@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { t } from '../i18n';
 import { buildMatchReport } from '../game/matchReport';
 import { computeMatchRatings, ratingTone, type PlayerRating } from '../game/ratingsEngine';
+import { tournamentRoundLabel } from '../game/tournamentEngine';
 import { useGameStore } from '../store/useGameStore';
 
 export function MatchResultScreen() {
@@ -10,6 +11,7 @@ export function MatchResultScreen() {
     finalScore,
     penaltyScore,
     playerWon,
+    playerChampion,
     rewards,
     afterResult,
     startNewTeamFlow,
@@ -43,6 +45,17 @@ export function MatchResultScreen() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Şampiyonluk bandı */}
+      {playerChampion && (
+        <div className="border-4 border-double border-gold bg-gold/10 text-center py-4 px-3 mb-5">
+          <div className="text-4xl mb-1">🏆</div>
+          <div className="font-headline font-black text-2xl sm:text-3xl uppercase text-gold">KUPA {home.teamName.toLocaleUpperCase('tr-TR')}'İN!</div>
+          <p className="text-sm italic text-ink-soft mt-1">
+            Son 32'den başlayan yol finalde taçlandı. Bu kadro artık turnuva tablosunda ve takım defterinde.
+          </p>
+        </div>
+      )}
+
       {/* Manşet */}
       <div className="text-center mb-5">
         <div className="text-[10px] font-score uppercase tracking-[0.35em] text-ink-soft mb-2">
@@ -205,14 +218,21 @@ export function MatchResultScreen() {
 
       {!playerWon && <p className="text-sm italic text-vermil text-center mb-4">{t('result.runOver')}</p>}
 
-      {playerWon ? (
+      {/* Turnuvada tur atlama notu */}
+      {playerWon && !playerChampion && run?.mode === 'tournament' && (
+        <p className="text-sm text-center font-semibold text-grass-deep mb-3">
+          🏆 Tur atlandı! Sıradaki durak: {tournamentRoundLabel(run.wins)}
+        </p>
+      )}
+
+      {playerWon && !playerChampion ? (
         <button className="btn-press w-full text-lg" onClick={afterResult}>
-          {t('result.playAgain')}
+          {run?.mode === 'tournament' ? 'Sıradaki Tura Hazırlan' : t('result.playAgain')}
         </button>
       ) : (
         <>
           <button className="btn-press w-full text-lg" onClick={startNewTeamFlow}>
-            {t('result.newRun')}
+            {playerChampion ? 'Yeni Bir Maceraya Başla' : t('result.newRun')}
           </button>
           {run == null && (
             <button className="btn-outline w-full mt-3" onClick={afterResult}>

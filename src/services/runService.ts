@@ -57,3 +57,17 @@ export async function eliminateRun(run: Run): Promise<Run> {
   await remove(RUN_KEY);
   return updated;
 }
+
+/** Turnuva kupası kaldırıldı: run başarıyla tamamlanır ve kapanır */
+export async function completeRun(run: Run, pointsGained: number, newStreak: number): Promise<Run> {
+  const updated: Run = {
+    ...run,
+    wins: run.wins + 1,
+    streak: newStreak,
+    pointsEarned: run.pointsEarned + pointsGained,
+    status: 'completed',
+    updatedAt: Date.now(),
+  };
+  await remove(RUN_KEY);
+  return updated;
+}

@@ -85,6 +85,8 @@ interface FlatLine {
   isGoal: boolean;
   isResult: boolean;
   isSuspense: boolean;
+  /** Gol sonrası kutlama cümlesi — küçük saha notu olarak düşer */
+  isAftermath?: boolean;
   icon: string | null;
   /** Perk tetiklendiğinde sonuç satırının altına düşen "muhabir notu" */
   perkNote: string | null;
@@ -148,19 +150,25 @@ function buildLines(session: MatchSession): FlatLine[] {
   const lines: FlatLine[] = [];
   let score: [number, number] = [0, 0];
   for (const e of session.events) {
+    // Büyük gol anonsu "GOOOL" satırına basılır; sonrasındaki kutlama cümlesi
+    // küçük bir saha notu olarak düşer (heyecan sırası bozulmaz).
+    const goalIdx = e.result === 'goal' ? e.textLines.findIndex((l) => l.includes('GOOOL')) : -1;
+    const resultIdx = goalIdx >= 0 ? goalIdx : e.textLines.length - 1;
     e.textLines.forEach((text, i) => {
-      const isLast = i === e.textLines.length - 1;
-      const isSuspense = !isLast && i >= e.textLines.length - 2 && e.textLines.length >= 4;
-      if (isLast) score = e.scoreAfterEvent;
+      const isResult = i === resultIdx;
+      const isAftermath = i > resultIdx;
+      const isSuspense = !isResult && !isAftermath && i >= resultIdx - 1 && e.textLines.length >= 4;
+      if (isResult) score = e.scoreAfterEvent;
       lines.push({
         text,
         minute: e.minute,
         score,
-        isGoal: isLast && e.result === 'goal',
-        isResult: isLast,
+        isGoal: isResult && e.result === 'goal',
+        isResult: isResult || isAftermath,
         isSuspense,
-        icon: resultIcon(e, i, e.textLines.length),
-        perkNote: isLast ? perkNoteOf(e) : null,
+        isAftermath,
+        icon: isResult ? resultIcon(e, e.textLines.length - 1, e.textLines.length) : e.type === 'faul' && i === 0 ? '⚠️' : null,
+        perkNote: i === e.textLines.length - 1 ? perkNoteOf(e) : null,
         side: e.attackingTeam,
         isEventStart: i === 0,
         cue: {
@@ -168,12 +176,13 @@ function buildLines(session: MatchSession): FlatLine[] {
           eventType: e.type,
           idx: i,
           count: e.textLines.length,
-          isResult: isLast,
-          isGoal: isLast && e.result === 'goal',
-          resultKind: isLast ? e.result : null,
+          // Kutlama satırları gol pozunu korur: top ağlarda kalır
+          isResult: isResult || isAftermath,
+          isGoal: isResult && e.result === 'goal',
+          resultKind: isResult || isAftermath ? e.result : null,
           minute: e.minute,
           seq: i,
-          pen: isLast ? (e.pen ?? null) : null,
+          pen: isResult || isAftermath ? (e.pen ?? null) : null,
         },
       });
     });
@@ -818,7 +827,7 @@ export function MatchSimulationScreen() {
               ) : (
                 <p
                   className={`leading-relaxed ${
-                    line.cue.eventType === 'taktik'
+                    line.cue.eventType === 'taktik' || line.isAftermath
                       ? 'italic text-ink-soft text-[13px]'
                       : line.isSuspense
                         ? 'italic text-ink-soft'
