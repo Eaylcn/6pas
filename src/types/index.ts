@@ -101,6 +101,32 @@ export interface ChemistryBreakdown {
 
 export type RunStatus = 'active' | 'eliminated' | 'completed';
 
+// ---- Turnuva ağacı ----
+export interface BracketTeam {
+  name: string;
+  /** Kura kartında gösterilen güç (tur atlayan ghost'lar güçlenir) */
+  power: number;
+  isPlayer: boolean;
+}
+
+export interface BracketMatch {
+  /** teams dizinindeki indeksler */
+  a: number;
+  b: number;
+  scoreA?: number;
+  scoreB?: number;
+  /** Kazanan takım indeksi */
+  winner?: number;
+  /** Eşitlik seri penaltılarla çözüldü */
+  penalties?: boolean;
+}
+
+export interface TournamentBracket {
+  teams: BracketTeam[];
+  /** rounds[0]=Son 32 (16 maç) … rounds[4]=Final (1 maç) */
+  rounds: BracketMatch[][];
+}
+
 export interface Run {
   id: string;
   userId: string;
@@ -118,6 +144,8 @@ export interface Run {
   streak: number;
   pointsEarned: number;
   status: RunStatus;
+  /** Turnuva modunda 32 takımlık kura ağacı */
+  bracket?: TournamentBracket;
   createdAt: number;
   updatedAt: number;
 }
@@ -329,4 +357,5 @@ export type ScreenId =
   | 'match'
   | 'half-time'
   | 'match-result'
-  | 'leaderboard';
+  | 'leaderboard'
+  | 'bracket';

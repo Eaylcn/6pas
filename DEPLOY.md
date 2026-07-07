@@ -9,10 +9,15 @@ Toplam süre: ~15 dakika. İki ücretsiz hesap gerekiyor: **Supabase** (veritaba
 3. Sol menü → **SQL Editor** → **New query** → bu repodaki [`supabase/schema.sql`](supabase/schema.sql) dosyasının TAMAMINI yapıştır → **Run**. "Success" görmelisin.
 4. Sol menü → **Authentication** → **Sign In / Providers** → **Email** → **"Confirm email" seçeneğini KAPAT** → Save.
    (Oyun e-posta istemez; kullanıcı adından sentetik e-posta üretir. Onay maili açık kalırsa kimse giriş yapamaz.)
-5. Sol menü → **Project Settings** → **API** (veya **Data API**):
-   - **Project URL** → bu senin `VITE_SUPABASE_URL` değerin
-   - **anon / public key** → bu senin `VITE_SUPABASE_ANON_KEY` değerin
-   (Anon key'in herkese görünmesi normaldir — güvenlik RLS politikalarında.)
+5. İki değeri topla:
+   - `VITE_SUPABASE_URL` → **Project Settings → General → Project URL** — şu biçimde olmalı:
+     `https://XXXXX.supabase.co` — ⚠️ **sonunda `/rest/v1/` OLMAMALI!**
+     (Data API sayfasındaki "API URL" `…/rest/v1/` ile biter; onu kopyalarsan
+     "Invalid path specified in request URL" hatası alırsın. Oyun bu son eki artık
+     otomatik kırpıyor ama doğrusu taban URL.)
+   - `VITE_SUPABASE_ANON_KEY` → **Project Settings → API Keys → Publishable key**
+     (`sb_publishable_…` ile başlayan). Eski projelerde "Legacy anon key" de kullanılabilir.
+     Publishable/anon key'in herkese görünmesi normaldir — güvenlik RLS politikalarında.
 
 ## 2. Vercel ile yayınlama (~5 dk)
 

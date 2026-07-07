@@ -75,8 +75,9 @@ export function generateGhostOpponent(rng: Rng, avoidName?: string): TeamMatchIn
 /**
  * Oyuncunun gücüne yakın (±5 bandında) ghost arar; 6 denemede en yakını döner.
  * Bilinçli küçük sapmalar underdog/overdog bonuslarını mümkün kılar.
+ * forcedName: turnuva ağacından gelen rakip ismi — ghost o isimle sahaya çıkar.
  */
-export function findMatchForRun(rng: Rng, playerPower: number, avoidName?: string): TeamMatchInfo {
+export function findMatchForRun(rng: Rng, playerPower: number, avoidName?: string, forcedName?: string): TeamMatchInfo {
   let best: TeamMatchInfo | null = null;
   let bestDiff = Infinity;
   for (let i = 0; i < 6; i++) {
@@ -88,6 +89,7 @@ export function findMatchForRun(rng: Rng, playerPower: number, avoidName?: strin
     }
     if (diff <= 5) break;
   }
+  if (forcedName) best!.teamName = forcedName;
   return best!;
 }
 

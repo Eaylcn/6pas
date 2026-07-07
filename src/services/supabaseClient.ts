@@ -3,8 +3,23 @@
 // Env yoksa her şey localStorage mock'unda kalır — tek dosyalık sürüm bozulmaz.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+/**
+ * Sık yapılan hata: Supabase panelinden PROJE URL'i yerine REST endpoint'i
+ * (…supabase.co/rest/v1/) kopyalanır — o zaman auth istekleri
+ * "Invalid path specified in request URL" ile patlar. Burada son ekleri kırpıp
+ * taban URL'e indiriyoruz ki yanlış kopyalama kendini onarsın.
+ */
+function normalizeSupabaseUrl(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/(rest|auth|realtime|storage|functions)\/v1$/i, '')
+    .replace(/\/+$/, '');
+}
+
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const url = rawUrl ? normalizeSupabaseUrl(rawUrl) : undefined;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 /** Canlı (online) mod açık mı? */
 export const isOnline = Boolean(url && anonKey);

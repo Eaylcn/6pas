@@ -155,6 +155,11 @@ export function SquadReviewScreen() {
           <button className="btn-press w-full text-lg" onClick={findMatch}>
             ⚽ {t('review.findMatch')}
           </button>
+          {run.mode === 'tournament' && run.bracket && (
+            <button className="btn-outline w-full" onClick={() => goto('bracket')}>
+              🏆 Turnuva Ağacı
+            </button>
+          )}
           <button className="btn-outline w-full" onClick={() => goto('home')}>
             {t('common.back')}
           </button>

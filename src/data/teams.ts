@@ -25,4 +25,17 @@ export const teamNamePool: string[] = [
   'Göztepe Gezginleri',
   'Balat Baldıranları',
   'Kalamış Korsanları',
+  // Turnuva ağacı için genişletilmiş havuz (32 takımlık kura dolmalı)
+  'Suadiye Sörfçüleri',
+  'Etiler Ekspresi',
+  'Kuzguncuk Kuzgunları',
+  'Yeldeğirmeni Yelkenlileri',
+  'Emirgan Efsaneleri',
+  'Bebek Boğaları',
+  'Kandilli Kıvılcımları',
+  'Küçüksu Kasırgası',
+  'Anadolu Ateşi',
+  'Pendik Poyrazı',
+  'Acıbadem Akıncıları',
+  'Fındıklı Fırtınası',
 ];

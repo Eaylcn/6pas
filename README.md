@@ -16,7 +16,7 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 ### Oyun döngüsü
 - Mock login (menajer adı) → **mod seçimi** → takım ismi → diziliş (2-2-1 / 1-2-2 / 1-3-1 / 2-1-2) → oyun tarzı + taktik planı → draft → maç → puan → tablo
 - **📰 Klasik Mod**: kaybedince run biter, kadro dağılır (roguelike); seri uzadıkça puan katlanır
-- **🏆 Turnuva Modu**: Son 32 → Son 16 → Çeyrek → Yarı → FİNAL. Her tur tek maç, kaybeden elenir; tur ilerledikçe rakip güç bandı yükselir. Tur atlama bonusları + şampiyonluk 300p
+- **🏆 Turnuva Modu**: Son 32 → Son 16 → Çeyrek → Yarı → FİNAL. Draft biter bitmez **32 takımlık kura ağacı** çekilir; rakipler ağaçtan gelir, diğer maçların skorları tur tur simüle edilir, **tur atlayan takımlar güçlenir** (rampa tavanlı — zorlaşır ama asla "kesin kayıp" olmaz). "Turnuva Ağacı" ekranında tüm kura, skorlar ve kupa yolun görünür. Tur atlama bonusları + şampiyonluk 300p
 - Beraberlik yok: **uzatma (61'-70') → seri penaltılar**
 - Puan: galibiyet 100 + seri/clean sheet/3+ gol/underdog/İkon kaptan bonusları (+turnuva tur bonusları)
 
@@ -46,7 +46,7 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - **Canlı saha**: top anlatımla eşzamanlı süzülür (golde metinle birlikte ağlara, poz sonraki satıra dek ekranda kalır)
 - Penaltılarda (maç içi + seri) **önden kale sahnesi**: direkler + ağ + penaltı noktası; eldivenler kurtarışta topun köşesine uçar, golde ters köşede kalakalır. Vuruşlar üst/yerden köşelere, ortaya, direğe ve auta gider — **anlatım ve görsel her vuruşta birebir aynı hikâyeyi anlatır**
 - **Maç saati dakika dakika ilerler**, olaylar dakikası gelince düşer
-- **Canlı kadro panelleri**: PC'de sağ/sol, mobilde altta — oyuncular **anlık reytingleriyle** (SofaScore tarzı, kaleci notları dengeli) + **durum ikonları** (🟨🟥⚕️🔁, oyundan çıkan soluk)
+- **Canlı kadro panelleri**: PC'de sağ/sol, mobilde altta — oyuncular **anlık reytingleriyle** (SofaScore tarzı, kaleci notları dengeli) + **katkı ve durum ikonları** (⚽ gol sayısı kadar, 🅰️ asist, 🧤 kurtarış, 🟨🟥⚕️🔁; oyundan çıkan soluk)
 - Timeline (⚽🟨🟥⚕🔁💢), golcü listesi ((P)/(SV) imli), momentum ibresi, GOOOL bandı + gol kupürü, takım etiketli/renk şeritli satırlar, TD isimleri, hız 1x/2x + dokun-ilerle + ileri sar
 
 ### Maç sonu: "Ertesi Sabahın Gazetesi"

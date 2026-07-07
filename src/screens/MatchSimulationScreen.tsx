@@ -57,6 +57,11 @@ function RosterPanel({ state, side, events }: { state: SimTeamState; side: 'home
           const id = r.player.id;
           const offField = reds.has(id) || injured.has(id) || subbedOut.has(id);
           const marks = [
+            // Katkılar: gol sayısı kadar top, asist sayısı kadar 🅰, kaleci kurtarışları 🧤
+            r.goals > 0 ? '⚽'.repeat(Math.min(r.goals, 3)) : null,
+            r.assists > 0 ? '🅰️'.repeat(Math.min(r.assists, 2)) : null,
+            r.saves > 0 ? `🧤${r.saves > 1 ? `×${r.saves}` : ''}` : null,
+            // Disiplin/durum
             reds.has(id) ? '🟥' : yellows.has(id) ? '🟨' : null,
             injured.has(id) ? '⚕️' : null,
             !reds.has(id) && !injured.has(id) && subbedOut.has(id) ? '🔁' : null,

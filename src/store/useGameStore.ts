@@ -44,6 +44,9 @@ import { calculateRunPoints } from '../game/scoringEngine';
 import {
   TOURNAMENT_CHAMPION_BONUS,
   TOURNAMENT_TOTAL_ROUNDS,
+  advanceTournamentBracket,
+  createTournamentBracket,
+  nextTournamentOpponent,
   tournamentPowerBoost,
   tournamentRoundBonus,
   tournamentRoundLabel,
@@ -353,6 +356,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         captainId: newCaptainId,
         chemistry,
       });
+      // Turnuva: kura ağacı draft biter bitmez çekilir
+      if (state.draftMode === 'tournament') {
+        const rng = createRng(randomSeed());
+        run.bracket = createTournamentBracket(rng, run.teamName, playerTeamInfo(run).power);
+        await runService.saveRun(run);
+      }
       set({ run, screen: 'squad-review' });
     }
   },
@@ -400,9 +409,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!run) return;
     set({ screen: 'matchmaking', opponent: null, opponentFound: false });
     const me = playerTeamInfo(run);
-    // Turnuvada tur ilerledikçe rakip güç bandı yükselir
+    // Turnuvada tur ilerledikçe rakip güç bandı yükselir; rakip ismi kura ağacından gelir
     const target = me.power + (run.mode === 'tournament' ? tournamentPowerBoost(run.wins) : 0);
-    const opponent = await matchmakingService.findOpponent(target, run.teamName);
+    const bracketOpponent =
+      run.mode === 'tournament' && run.bracket ? nextTournamentOpponent(run.bracket, run.wins) : null;
+    const opponent = await matchmakingService.findOpponent(target, run.teamName, bracketOpponent?.name);
+    // Kura kartındaki güç, sahaya çıkan gerçek kadroyla eşitlenir
+    if (bracketOpponent && run.bracket) {
+      const idx = run.bracket.teams.findIndex((t) => t.name === bracketOpponent.name);
+      if (idx >= 0) {
+        run.bracket.teams[idx].power = opponent.power;
+        await runService.saveRun(run);
+      }
+    }
     set({ opponent, opponentFound: true });
   },
 
@@ -629,11 +648,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // Kura ağacını işle: oyuncu skoru + diğer maçların simülasyonu + sonraki tur
+    const runWithBracket: Run =
+      isTournament && run.bracket
+        ? {
+            ...run,
+            bracket: advanceTournamentBracket(run.bracket, run.wins, finalScore, won, penalties !== null, sim.rng),
+          }
+        : run;
+
     const updatedRun: Run = won
       ? champion
-        ? await runService.completeRun(run, rewards.total, rewards.newStreak)
-        : await runService.continueRunAfterWin(run, rewards.total, rewards.newStreak)
-      : await runService.eliminateRun(run);
+        ? await runService.completeRun(runWithBracket, rewards.total, rewards.newStreak)
+        : await runService.continueRunAfterWin(runWithBracket, rewards.total, rewards.newStreak)
+      : await runService.eliminateRun(runWithBracket);
 
     await useUserStore.getState().applyMatchOutcome({
       mode: isTournament ? 'tournament' : 'classic',

@@ -51,6 +51,11 @@ export function HomeDashboard() {
             <button className="btn-press w-full" onClick={() => goto('squad-review')}>
               {t('home.continueRun')}
             </button>
+            {run.mode === 'tournament' && run.bracket && (
+              <button className="btn-outline w-full mt-2" onClick={() => goto('bracket')}>
+                🏆 Turnuva Ağacı
+              </button>
+            )}
           </>
         ) : (
           <>
