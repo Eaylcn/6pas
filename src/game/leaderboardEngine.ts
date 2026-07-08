@@ -51,20 +51,20 @@ export function updateLeaderboardAfterMatch(
 /** MVP: tabloyu dolduran bot menajerler — oyuncunun sırası anlamlı hissettirsin */
 /** Turnuva tablosu botları — bestStage: kazanılan tur sayısı (5 = şampiyon) */
 export const seedTournamentBots: LeaderboardEntry[] = [
-  { userId: 'tbot-1', username: 'Kupa Kolektörü', totalPoints: 1120, bestStreak: 5, bestStage: 5, totalWins: 9, totalLosses: 2, matchesPlayed: 11, currentActiveRunId: null, isBot: true },
-  { userId: 'tbot-2', username: 'Final Kurdu', totalPoints: 815, bestStreak: 4, bestStage: 4, totalWins: 7, totalLosses: 3, matchesPlayed: 10, currentActiveRunId: null, isBot: true },
-  { userId: 'tbot-3', username: 'Çeyrek Usta', totalPoints: 540, bestStreak: 3, bestStage: 3, totalWins: 5, totalLosses: 3, matchesPlayed: 8, currentActiveRunId: null, isBot: true },
-  { userId: 'tbot-4', username: 'Kura Şanssızı', totalPoints: 310, bestStreak: 2, bestStage: 2, totalWins: 3, totalLosses: 4, matchesPlayed: 7, currentActiveRunId: null, isBot: true },
-  { userId: 'tbot-5', username: 'Son 32 Turisti', totalPoints: 120, bestStreak: 1, bestStage: 1, totalWins: 1, totalLosses: 3, matchesPlayed: 4, currentActiveRunId: null, isBot: true },
+  { userId: 'tbot-1', username: 'Emre Yıldız', totalPoints: 1120, bestStreak: 5, bestStage: 5, totalWins: 9, totalLosses: 2, matchesPlayed: 11, currentActiveRunId: null, isBot: true },
+  { userId: 'tbot-2', username: 'Kaan Demir', totalPoints: 815, bestStreak: 4, bestStage: 4, totalWins: 7, totalLosses: 3, matchesPlayed: 10, currentActiveRunId: null, isBot: true },
+  { userId: 'tbot-3', username: 'Burak Şahin', totalPoints: 540, bestStreak: 3, bestStage: 3, totalWins: 5, totalLosses: 3, matchesPlayed: 8, currentActiveRunId: null, isBot: true },
+  { userId: 'tbot-4', username: 'Onur Aksoy', totalPoints: 310, bestStreak: 2, bestStage: 2, totalWins: 3, totalLosses: 4, matchesPlayed: 7, currentActiveRunId: null, isBot: true },
+  { userId: 'tbot-5', username: 'Deniz Arslan', totalPoints: 120, bestStreak: 1, bestStage: 1, totalWins: 1, totalLosses: 3, matchesPlayed: 4, currentActiveRunId: null, isBot: true },
 ];
 
 export const seedBots: LeaderboardEntry[] = [
-  { userId: 'bot-1', username: 'Rakipsiz Rıza', totalPoints: 1840, bestStreak: 7, totalWins: 15, totalLosses: 6, matchesPlayed: 21, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-2', username: 'Volebey', totalPoints: 1465, bestStreak: 5, totalWins: 12, totalLosses: 7, matchesPlayed: 19, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-3', username: 'Halısaha Aslanı', totalPoints: 1210, bestStreak: 4, totalWins: 10, totalLosses: 8, matchesPlayed: 18, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-4', username: 'TaçlıAdam', totalPoints: 980, bestStreak: 4, totalWins: 8, totalLosses: 5, matchesPlayed: 13, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-5', username: 'Ofsayttayım Hocam', totalPoints: 760, bestStreak: 3, totalWins: 7, totalLosses: 9, matchesPlayed: 16, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-6', username: 'Plase Prensi', totalPoints: 545, bestStreak: 2, totalWins: 5, totalLosses: 4, matchesPlayed: 9, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-7', username: 'Kaleci Dede', totalPoints: 420, bestStreak: 2, totalWins: 4, totalLosses: 6, matchesPlayed: 10, currentActiveRunId: null, isBot: true },
-  { userId: 'bot-8', username: 'Çim Adam', totalPoints: 230, bestStreak: 1, totalWins: 2, totalLosses: 3, matchesPlayed: 5, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-1', username: 'Mert Korkmaz', totalPoints: 1840, bestStreak: 7, totalWins: 15, totalLosses: 6, matchesPlayed: 21, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-2', username: 'Serkan Doğan', totalPoints: 1465, bestStreak: 5, totalWins: 12, totalLosses: 7, matchesPlayed: 19, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-3', username: 'Tolga Yılmaz', totalPoints: 1210, bestStreak: 4, totalWins: 10, totalLosses: 8, matchesPlayed: 18, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-4', username: 'Cem Öztürk', totalPoints: 980, bestStreak: 4, totalWins: 8, totalLosses: 5, matchesPlayed: 13, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-5', username: 'Uğur Çelik', totalPoints: 760, bestStreak: 3, totalWins: 7, totalLosses: 9, matchesPlayed: 16, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-6', username: 'Barış Kaya', totalPoints: 545, bestStreak: 2, totalWins: 5, totalLosses: 4, matchesPlayed: 9, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-7', username: 'Hakan Aydın', totalPoints: 420, bestStreak: 2, totalWins: 4, totalLosses: 6, matchesPlayed: 10, currentActiveRunId: null, isBot: true },
+  { userId: 'bot-8', username: 'Volkan Er', totalPoints: 230, bestStreak: 1, totalWins: 2, totalLosses: 3, matchesPlayed: 5, currentActiveRunId: null, isBot: true },
 ];

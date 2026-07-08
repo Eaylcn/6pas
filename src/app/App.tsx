@@ -15,6 +15,7 @@ import { HalfTimeScreen } from '../screens/HalfTimeScreen';
 import { MatchResultScreen } from '../screens/MatchResultScreen';
 import { LeaderboardScreen } from '../screens/LeaderboardScreen';
 import { BracketScreen } from '../screens/BracketScreen';
+import { ReinforcementScreen } from '../screens/ReinforcementScreen';
 import { t } from '../i18n';
 
 /** Ekran state-machine router'ı — ileride URL tabanlı router'a taşınabilir */
@@ -49,6 +50,8 @@ function Router() {
       return <LeaderboardScreen />;
     case 'bracket':
       return <BracketScreen />;
+    case 'reinforcement':
+      return <ReinforcementScreen />;
   }
 }
 

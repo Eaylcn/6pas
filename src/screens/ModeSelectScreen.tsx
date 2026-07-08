@@ -21,6 +21,13 @@ export function ModeSelectScreen() {
             sertleşir. Kupayı kaldıran, turnuva tablosuna adını yazdırır.
           </p>
         </button>
+        <button className="news-card-clickable w-full p-5 text-left" onClick={() => startDraftFlow('career')}>
+          <div className="font-headline font-bold text-xl">💪 Kariyer — Ana Kadro</div>
+          <p className="text-sm text-ink-soft mt-1">
+            Zayıf bir kadroyla başla, kalıcı takımını kur. Her galibiyette bir mevkiye takviye yap (eski oyuncu
+            gider). Kaybetsen de kadron dağılmaz — sabırla bir ekol inşa et.
+          </p>
+        </button>
         <div className="news-card w-full p-5 text-left opacity-50">
           <div className="flex items-center justify-between">
             <div className="font-headline font-bold text-xl">{t('mode.ranked')}</div>

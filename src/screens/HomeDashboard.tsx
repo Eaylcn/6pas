@@ -10,18 +10,26 @@ import { isOnline } from '../services/supabaseClient';
 export function HomeDashboard() {
   const user = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
+  const leaderboard = useUserStore((s) => s.leaderboard);
+  const tournamentBoard = useUserStore((s) => s.tournamentBoard);
+  const refreshLeaderboard = useUserStore((s) => s.refreshLeaderboard);
   const run = useGameStore((s) => s.run);
   const goto = useGameStore((s) => s.goto);
   const startNewTeamFlow = useGameStore((s) => s.startNewTeamFlow);
   const [clippings, setClippings] = useState<MatchClipping[]>([]);
   const [runHistory, setRunHistory] = useState<RunRecord[]>([]);
+  const [boardTab, setBoardTab] = useState<'classic' | 'tournament'>('classic');
 
   useEffect(() => {
     void getClippings().then(setClippings);
     void getRunHistory().then(setRunHistory);
-  }, []);
+    void refreshLeaderboard();
+  }, [refreshLeaderboard]);
 
   if (!user) return null;
+
+  const boardEntries = (boardTab === 'classic' ? leaderboard : tournamentBoard).slice(0, 6);
+  const modeIcon = run?.mode === 'tournament' ? '🏆 ' : run?.mode === 'career' ? '💪 ' : '';
 
   return (
     <div>
@@ -38,13 +46,15 @@ export function HomeDashboard() {
         {run ? (
           <>
             <p className="font-headline font-bold text-xl mb-1">
-              {run.mode === 'tournament' ? '🏆 ' : ''}
+              {modeIcon}
               {run.teamName}
             </p>
             <p className="text-sm text-ink-soft mb-4">
               {run.mode === 'tournament'
                 ? `Kupa yolu — sıradaki tur: ${tournamentRoundLabel(run.wins)} · ${run.pointsEarned} ${t('common.points').toLowerCase()}`
-                : `${run.wins} ${t('common.win').toLowerCase()} · ${t('common.streak')}: ${run.streak} · ${run.pointsEarned} ${t('common.points').toLowerCase()}`}
+                : run.mode === 'career'
+                  ? `Kariyer · ${run.wins} ${t('common.win').toLowerCase()} / ${run.losses} ${t('common.loss').toLowerCase()} · ${run.pointsEarned} ${t('common.points').toLowerCase()}`
+                  : `${run.wins} ${t('common.win').toLowerCase()} · ${t('common.streak')}: ${run.streak} · ${run.pointsEarned} ${t('common.points').toLowerCase()}`}
             </p>
             <button className="btn-press w-full" onClick={() => goto('squad-review')}>
               {t('home.continueRun')}
@@ -65,9 +75,55 @@ export function HomeDashboard() {
         )}
       </div>
 
-      <button className="btn-outline w-full" onClick={() => goto('leaderboard')}>
-        {t('home.leaderboard')}
-      </button>
+      {/* Canlı puan tablosu — dashboard'da doğrudan görünür */}
+      <div className="news-card p-4 mb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="tag-label">{isOnline ? '🌐 CANLI PUAN TABLOSU' : 'PUAN TABLOSU'}</span>
+          <div className="flex gap-1">
+            <button
+              className={`text-[10px] font-score uppercase px-2 py-0.5 border border-ink/40 ${boardTab === 'classic' ? 'bg-ink text-paper' : ''}`}
+              onClick={() => setBoardTab('classic')}
+            >
+              KLASİK
+            </button>
+            <button
+              className={`text-[10px] font-score uppercase px-2 py-0.5 border border-ink/40 ${boardTab === 'tournament' ? 'bg-ink text-paper' : ''}`}
+              onClick={() => setBoardTab('tournament')}
+            >
+              🏆 TURNUVA
+            </button>
+          </div>
+        </div>
+        {boardEntries.length > 0 ? (
+          <div className="space-y-1">
+            {boardEntries.map((e, i) => {
+              const isMe = e.userId === user.id;
+              return (
+                <div
+                  key={e.userId}
+                  className={`flex items-center gap-2 text-sm border-b border-ink/10 pb-1 ${isMe ? 'font-bold text-grass-deep' : ''}`}
+                >
+                  <span className="font-score font-bold w-5 text-center">{i + 1}</span>
+                  <span className="truncate flex-1">
+                    {e.username} {isMe && <span className="text-[10px]">(sen)</span>}
+                  </span>
+                  {boardTab === 'tournament' && (e.bestStage ?? 0) > 0 && (
+                    <span className="text-[9px] font-score uppercase text-ink-soft shrink-0">
+                      {(e.bestStage ?? 0) >= 5 ? '🏆' : tournamentRoundLabel(e.bestStage ?? 0)}
+                    </span>
+                  )}
+                  <span className="font-score font-bold shrink-0">{e.totalPoints}p</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs italic text-ink-faint">Tablo henüz boş — ilk maçı sen kazan, adını ilk sen yazdır.</p>
+        )}
+        <button className="btn-outline w-full mt-3 text-xs py-1.5" onClick={() => goto('leaderboard')}>
+          Tüm Tabloyu Gör →
+        </button>
+      </div>
 
       <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft flex-wrap gap-2">
         <span className="flex items-center gap-3">

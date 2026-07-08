@@ -16,6 +16,8 @@ export function MatchResultScreen() {
     afterResult,
     startNewTeamFlow,
     run,
+    lossFeedback,
+    awaitingReinforcement,
   } = useGameStore();
 
   const report = useMemo(() => {
@@ -216,7 +218,30 @@ export function MatchResultScreen() {
         </div>
       )}
 
-      {!playerWon && <p className="text-sm italic text-vermil text-center mb-4">{t('result.runOver')}</p>}
+      {/* Kaybedince koçluk geri bildirimi: "şunu yapsaydın kazanabilirdin" */}
+      {!playerWon && lossFeedback && (
+        <div className="news-card p-4 mb-4 border-l-4 border-vermil">
+          <div className="tag-label mb-1.5">🧑‍🏫 TEKNİK ANALİZ</div>
+          <p className="text-sm font-headline font-bold mb-2">{lossFeedback.headline}</p>
+          <ul className="space-y-1.5">
+            {lossFeedback.tips.map((tip, i) => (
+              <li key={i} className="text-[13px] leading-snug flex gap-2">
+                <span className="text-vermil shrink-0">▸</span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!playerWon && run?.mode !== 'career' && (
+        <p className="text-sm italic text-vermil text-center mb-4">{t('result.runOver')}</p>
+      )}
+      {!playerWon && run?.mode === 'career' && (
+        <p className="text-sm italic text-grass-deep text-center mb-4">
+          Kadron sağlam — kariyerde kayıplar öğretir, takım dağılmaz.
+        </p>
+      )}
 
       {/* Turnuvada tur atlama notu */}
       {playerWon && !playerChampion && run?.mode === 'tournament' && (
@@ -225,7 +250,12 @@ export function MatchResultScreen() {
         </p>
       )}
 
-      {playerWon && !playerChampion ? (
+      {/* Kariyer: galibiyette takviye, kayıpta kadroyla devam */}
+      {run?.mode === 'career' ? (
+        <button className="btn-press w-full text-lg" onClick={afterResult}>
+          {awaitingReinforcement ? '💪 Takviyeye Geç' : playerWon ? 'Kadroyla Devam' : 'Kadroyu İncele'}
+        </button>
+      ) : playerWon && !playerChampion ? (
         <button className="btn-press w-full text-lg" onClick={afterResult}>
           {run?.mode === 'tournament' ? 'Sıradaki Tura Hazırlan' : t('result.playAgain')}
         </button>

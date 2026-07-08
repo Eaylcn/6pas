@@ -32,7 +32,7 @@ export function StylePicker({
 }
 
 export function TacticsSetupScreen() {
-  const { draftPlayStyle, setPlayStyle, draftPlan, setPlan, confirmTactics, goto } = useGameStore();
+  const { draftPlayStyle, setPlayStyle, draftPlan, setPlan, confirmTactics, goto, draftMode } = useGameStore();
 
   return (
     <div className="max-w-lg mx-auto">
@@ -67,7 +67,7 @@ export function TacticsSetupScreen() {
           {t('common.back')}
         </button>
         <button className="btn-press flex-1" onClick={confirmTactics}>
-          {t('tactics.toDraft')}
+          {draftMode === 'career' ? 'Kadroyu Kur' : t('tactics.toDraft')}
         </button>
       </div>
     </div>

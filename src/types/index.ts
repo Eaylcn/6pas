@@ -7,7 +7,7 @@ export type Rarity = 'common' | 'solid' | 'pro' | 'star' | 'legend' | 'icon';
 
 export type PlayStyle = 'ofansif' | 'dengeli' | 'defansif' | 'kontra';
 
-export type GameMode = 'classic' | 'ranked' | 'tournament';
+export type GameMode = 'classic' | 'ranked' | 'tournament' | 'career';
 
 export interface Perk {
   id: string;
@@ -358,4 +358,5 @@ export type ScreenId =
   | 'half-time'
   | 'match-result'
   | 'leaderboard'
-  | 'bracket';
+  | 'bracket'
+  | 'reinforcement';

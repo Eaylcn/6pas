@@ -41,6 +41,8 @@ import {
 import type { AssistantAction } from '../game/assistantEngine';
 import { generateHalfTimeSummary, validateSubstitution, MAX_SUBSTITUTIONS } from '../game/halftimeEngine';
 import { calculateRunPoints } from '../game/scoringEngine';
+import { buildStarterSquad, pickReinforcement } from '../game/careerEngine';
+import { buildLossFeedback, type MatchFeedback } from '../game/matchFeedback';
 import {
   TOURNAMENT_CHAMPION_BONUS,
   TOURNAMENT_TOTAL_ROUNDS,
@@ -108,6 +110,10 @@ interface GameState {
   playerChampion: boolean;
   manOfTheMatch: string | null;
   criticalMoment: string | null;
+  /** Kaybedilen maçta koçluk geri bildirimi */
+  lossFeedback: MatchFeedback | null;
+  /** Kariyer: galibiyet sonrası takviye önerisi bekliyor */
+  awaitingReinforcement: boolean;
 
   // Aksiyonlar
   init: () => Promise<void>;
@@ -149,6 +155,11 @@ interface GameState {
   sidelinePositionChange: (playerId: string, newPos: FieldPosition) => string | null;
   /** Yardımcı antrenör önerisini tek tıkla uygular */
   applyAssistantAction: (action: AssistantAction, context: 'HT' | 'LIVE') => string | null;
+
+  /** Kariyer: seçilen mevkiye takviye getir, o mevkinin en zayıfı gitsin */
+  applyReinforcement: (position: Position) => Promise<{ error?: string; summary?: string }>;
+  /** Kariyer: takviyeyi atla, kadroyu koru */
+  skipReinforcement: () => void;
 
   finishMatch: () => Promise<void>;
   afterResult: () => Promise<void>;
@@ -230,6 +241,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   playerChampion: false,
   manOfTheMatch: null,
   criticalMoment: null,
+  lossFeedback: null,
+  awaitingReinforcement: false,
 
   init: async () => {
     await useUserStore.getState().init();
@@ -281,7 +294,33 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPlan: (updates) => set((s) => ({ draftPlan: { ...s.draftPlan, ...updates } })),
 
   confirmTactics: () => {
-    const formation = getFormation(get().draftFormationId);
+    const state = get();
+    const formation = getFormation(state.draftFormationId);
+    // Kariyer modu: draft yok — zayıf başlangıç kadrosu otomatik verilir
+    if (state.draftMode === 'career') {
+      void (async () => {
+        const user = useUserStore.getState().user;
+        if (!user) return;
+        const rng = createRng(randomSeed());
+        const { squad, bench, captainId } = buildStarterSquad(rng, formation);
+        const onField = squad.filter((s) => s.playerId).map((s) => getPlayer(s.playerId!));
+        const chemistry = calculateTeamChemistry(onField, captainId);
+        const run = await runService.createNewRun({
+          userId: user.id,
+          mode: 'career',
+          teamName: state.draftTeamName || 'Ana Kadro',
+          formationId: state.draftFormationId,
+          defaultPlayStyle: state.draftPlayStyle,
+          tacticalPlan: state.draftPlan,
+          squad,
+          bench,
+          captainId,
+          chemistry,
+        });
+        set({ run, screen: 'squad-review' });
+      })();
+      return;
+    }
     set({
       squadSlots: buildSquadSlots(formation),
       benchSlots: buildBenchSlots(),
@@ -636,6 +675,38 @@ export const useGameStore = create<GameState>((set, get) => ({
       opponent: sim.away.info,
     });
 
+    // Kaybedilen maçta koçluk geri bildirimi (tüm modlar)
+    const lossFeedback = won ? null : buildLossFeedback(sim.home, sim.away, events, penalties !== null);
+
+    // Kariyer modu: kadro kalıcı — kayıpta dağılmaz, galibiyette takviye gelir
+    if (run.mode === 'career') {
+      const careerRun = await runService.continueCareerAfterMatch(run, won, rewards.total);
+      await historyService.addClipping({
+        teamName: sim.home.info.teamName,
+        opponentName: sim.away.info.teamName,
+        score: finalScore,
+        penaltyScore: penalties ? [penalties.homeGoals, penalties.awayGoals] : null,
+        won,
+        headline: buildMatchReport({ events, home: sim.home.info, away: sim.away.info, finalScore, penalties, won, streak: careerRun.streak }).headline,
+        playedAt: Date.now(),
+      });
+      set({
+        run: careerRun,
+        rewards,
+        finalScore,
+        penaltyScore: penalties ? [penalties.homeGoals, penalties.awayGoals] : null,
+        playerWon: won,
+        playerDraw: false,
+        playerChampion: false,
+        lossFeedback,
+        awaitingReinforcement: won,
+        manOfTheMatch: pickManOfTheMatch(events, sim.home.info, sim.away.info),
+        criticalMoment: penalties ? penalties.lines[penalties.lines.length - 1].text : pickCriticalMoment(events),
+        screen: 'match-result',
+      });
+      return;
+    }
+
     // Turnuva: tur atlama bonusu + şampiyonluk
     const isTournament = run.mode === 'tournament';
     const champion = isTournament && won && run.wins + 1 >= TOURNAMENT_TOTAL_ROUNDS;
@@ -727,14 +798,57 @@ export const useGameStore = create<GameState>((set, get) => ({
       playerWon: won,
       playerDraw: false,
       playerChampion: champion,
+      lossFeedback,
+      awaitingReinforcement: false,
       manOfTheMatch: pickManOfTheMatch(events, sim.home.info, sim.away.info),
       criticalMoment: penalties ? penalties.lines[penalties.lines.length - 1].text : pickCriticalMoment(events),
       screen: 'match-result',
     });
   },
 
+  applyReinforcement: async (position) => {
+    const { run } = get();
+    if (!run) return { error: 'Aktif kadro yok' };
+    const currentIds = [...run.squad, ...run.bench].filter((s) => s.playerId).map((s) => s.playerId!);
+    const rng = createRng(randomSeed());
+    const result = pickReinforcement(rng, currentIds, position, run.wins);
+    if (!result) return { error: 'Bu mevkide takviye bulunamadı.' };
+
+    const { incoming, outgoingId } = result;
+    const newSquad = run.squad.map((s) => (s.playerId === outgoingId ? { ...s, playerId: incoming.id } : s));
+    const newBench = run.bench.map((b) => (b.playerId === outgoingId ? { ...b, playerId: incoming.id } : b));
+    const captainId = run.captainId === outgoingId ? incoming.id : run.captainId;
+    const onField = newSquad.filter((s) => s.playerId).map((s) => getPlayer(s.playerId!));
+    const chemistry = calculateTeamChemistry(onField, captainId, outOfPositionCount(newSquad));
+    const updated: Run = { ...run, squad: newSquad, bench: newBench, captainId, chemistry };
+    await runService.saveRun(updated);
+
+    let outName = 'oyuncu';
+    try {
+      outName = getPlayer(outgoingId).name;
+    } catch {
+      // isim çözülemezse jenerik
+    }
+    set({ run: updated, awaitingReinforcement: false });
+    return { summary: `${incoming.name} (${incoming.ovr}) takıma katıldı; ${outName} kadrodan ayrıldı.` };
+  },
+
+  skipReinforcement: () => {
+    set({ awaitingReinforcement: false });
+  },
+
   afterResult: async () => {
-    const { playerWon, run } = get();
+    const { playerWon, run, awaitingReinforcement } = get();
+    // Kariyer: galibiyette takviye ekranı; kayıpta kadro korunur, kadro incelemeye
+    if (run?.mode === 'career') {
+      set({
+        screen: awaitingReinforcement ? 'reinforcement' : 'squad-review',
+        session: null,
+        opponent: null,
+        opponentFound: false,
+      });
+      return;
+    }
     set({
       screen: playerWon && run ? 'squad-review' : 'home',
       session: null,

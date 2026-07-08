@@ -58,6 +58,20 @@ export async function eliminateRun(run: Run): Promise<Run> {
   return updated;
 }
 
+/** Kariyer: kayıpta bile kadro dağılmaz — run aktif kalır, sadece istatistik işlenir */
+export async function continueCareerAfterMatch(run: Run, won: boolean, pointsGained: number): Promise<Run> {
+  const updated: Run = {
+    ...run,
+    wins: run.wins + (won ? 1 : 0),
+    losses: run.losses + (won ? 0 : 1),
+    streak: won ? run.streak + 1 : 0,
+    pointsEarned: run.pointsEarned + pointsGained,
+    updatedAt: Date.now(),
+  };
+  await save(RUN_KEY, updated);
+  return updated;
+}
+
 /** Turnuva kupası kaldırıldı: run başarıyla tamamlanır ve kapanır */
 export async function completeRun(run: Run, pointsGained: number, newStreak: number): Promise<Run> {
   const updated: Run = {

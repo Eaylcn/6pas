@@ -17,6 +17,7 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - Mock login (menajer adı) → **mod seçimi** → takım ismi → diziliş (2-2-1 / 1-2-2 / 1-3-1 / 2-1-2) → oyun tarzı + taktik planı → draft → maç → puan → tablo
 - **📰 Klasik Mod**: kaybedince run biter, kadro dağılır (roguelike); seri uzadıkça puan katlanır
 - **🏆 Turnuva Modu**: Son 32 → Son 16 → Çeyrek → Yarı → FİNAL. Draft biter bitmez **32 takımlık kura ağacı** çekilir; rakipler ağaçtan gelir, diğer maçların skorları tur tur simüle edilir, **tur atlayan takımlar güçlenir** (rampa tavanlı — zorlaşır ama asla "kesin kayıp" olmaz). "Turnuva Ağacı" ekranında tüm kura, skorlar ve kupa yolun görünür. Tur atlama bonusları + şampiyonluk 300p
+- **💪 Kariyer (Ana Kadro) Modu**: draft yok — **zayıf bir başlangıç kadrosu** verilir; kadro **kalıcıdır, kaybetsen de dağılmaz**. Her galibiyette bir **mevki seçersin**, o bölgeye üst OVR bir takviye gelir (rampalı, galibiyetle yükselir), o mevkinin en zayıfı gider. Sabırla bir ekol inşa etme modu
 - Beraberlik yok: **uzatma (61'-70') → seri penaltılar**
 - Puan: galibiyet 100 + seri/clean sheet/3+ gol/underdog/İkon kaptan bonusları (+turnuva tur bonusları)
 
@@ -50,6 +51,7 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - Timeline (⚽🟨🟥⚕🔁💢), golcü listesi ((P)/(SV) imli), momentum ibresi, GOOOL bandı + gol kupürü, takım etiketli/renk şeritli satırlar, TD isimleri, hız 1x/2x + dokun-ilerle + ileri sar
 
 ### Maç sonu: "Ertesi Sabahın Gazetesi"
+- Kaybedilen maçta **🧑‍🏫 Teknik Analiz**: kimya, güç farkı, şut isabeti, duran top, kırmızı kart ve taktik uyumuna göre "şunu yapsaydın kazanabilirdin" tarzı yapıcı öneriler
 - Dinamik manşet ("SON NEFESTE!", "PENALTILARDA DESTAN"...), yarı skoru, gol/kart listeleri
 - İstatistik karşılaştırma barları, Hakem Karnesi, gerekçeli Maçın Adamı
 - **İmza Hareketleri** (maça dokunan perkler ×sayaç) · **Oyuncu Karneleri** (4.5-10.0)
