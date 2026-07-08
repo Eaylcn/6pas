@@ -156,6 +156,8 @@ interface GameState {
   /** Yardımcı antrenör önerisini tek tıkla uygular */
   applyAssistantAction: (action: AssistantAction, context: 'HT' | 'LIVE') => string | null;
 
+  /** Maç dışı (kadro inceleme) taktik düzenleme — tüm modlar, run'a kaydeder */
+  updateRunTactics: (style: PlayStyle | null, plan: Partial<TacticalPlan> | null) => Promise<void>;
   /** Kariyer: seçilen mevkiye takviye getir, o mevkinin en zayıfı gitsin */
   applyReinforcement: (position: Position) => Promise<{ error?: string; summary?: string }>;
   /** Kariyer: takviyeyi atla, kadroyu koru */
@@ -806,15 +808,28 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
+  updateRunTactics: async (style, plan) => {
+    const { run } = get();
+    if (!run) return;
+    const updated: Run = {
+      ...run,
+      defaultPlayStyle: style ?? run.defaultPlayStyle,
+      tacticalPlan: plan ? { ...run.tacticalPlan, ...plan } : run.tacticalPlan,
+    };
+    await runService.saveRun(updated);
+    set({ run: updated });
+  },
+
   applyReinforcement: async (position) => {
     const { run } = get();
     if (!run) return { error: 'Aktif kadro yok' };
-    const currentIds = [...run.squad, ...run.bench].filter((s) => s.playerId).map((s) => s.playerId!);
+    const starterIds = run.squad.filter((s) => s.playerId).map((s) => s.playerId!);
+    const benchIds = run.bench.filter((b) => b.playerId).map((b) => b.playerId!);
     const rng = createRng(randomSeed());
-    const result = pickReinforcement(rng, currentIds, position, run.wins);
+    const result = pickReinforcement(rng, starterIds, benchIds, position, run.wins);
     if (!result) return { error: 'Bu mevkide takviye bulunamadı.' };
 
-    const { incoming, outgoingId } = result;
+    const { incoming, outgoingId, outgoingWasStarter } = result;
     const newSquad = run.squad.map((s) => (s.playerId === outgoingId ? { ...s, playerId: incoming.id } : s));
     const newBench = run.bench.map((b) => (b.playerId === outgoingId ? { ...b, playerId: incoming.id } : b));
     const captainId = run.captainId === outgoingId ? incoming.id : run.captainId;
@@ -830,7 +845,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       // isim çözülemezse jenerik
     }
     set({ run: updated, awaitingReinforcement: false });
-    return { summary: `${incoming.name} (${incoming.ovr}) takıma katıldı; ${outName} kadrodan ayrıldı.` };
+    const slot = outgoingWasStarter ? 'ilk 11' : 'kulübe';
+    return { summary: `${incoming.name} (${incoming.ovr}) ${slot}e katıldı; ${outName} kadrodan ayrıldı.` };
   },
 
   skipReinforcement: () => {

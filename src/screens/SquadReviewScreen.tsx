@@ -5,14 +5,16 @@ import { SectionHeadline } from '../components/NewspaperShell';
 import { PlayerCard } from '../components/PlayerCard';
 import { ChemistryPanel } from '../components/ChemistryPanel';
 import { PitchView, ChemistryLegend, type PitchSlotView } from '../components/PitchView';
+import { StylePicker } from './TacticsSetupScreen';
 import { calculateTeamPower } from '../game/matchEngine';
 import { outOfPositionCount, useGameStore } from '../store/useGameStore';
 import type { AnyPlayer, TeamMatchInfo } from '../types';
 
 export function SquadReviewScreen() {
-  const { run, findMatch, goto, swapWithBench } = useGameStore();
+  const { run, findMatch, goto, swapWithBench, updateRunTactics } = useGameStore();
   const [inspected, setInspected] = useState<AnyPlayer | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [tacticsOpen, setTacticsOpen] = useState(false);
   const [selectedFieldSlot, setSelectedFieldSlot] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   if (!run) return null;
@@ -140,17 +142,56 @@ export function SquadReviewScreen() {
             </div>
           )}
           <ChemistryPanel chemistry={run.chemistry} />
-          <div className="news-card p-3 text-xs space-y-1">
-            <div className="tag-label mb-1">{t('common.tacticalPlan')}</div>
-            <p>
-              {t('tactics.whenWinning')}: <b>{t(`playStyle.${run.tacticalPlan.whenWinning}`)}</b>
-            </p>
-            <p>
-              {t('tactics.whenDrawing')}: <b>{t(`playStyle.${run.tacticalPlan.whenDrawing}`)}</b>
-            </p>
-            <p>
-              {t('tactics.whenLosing')}: <b>{t(`playStyle.${run.tacticalPlan.whenLosing}`)}</b>
-            </p>
+
+          {/* Taktik düzenleme — tüm modlarda maç öncesi ayarlanabilir */}
+          <div className="news-card p-3">
+            <button
+              className="w-full flex items-center justify-between"
+              onClick={() => setTacticsOpen((o) => !o)}
+            >
+              <span className="tag-label">{t('common.tacticalPlan')} · düzenle</span>
+              <span className="font-score text-ink-faint">{tacticsOpen ? '−' : '⚙'}</span>
+            </button>
+
+            {tacticsOpen ? (
+              <div className="mt-2 space-y-2.5">
+                <div>
+                  <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">
+                    {t('tactics.defaultStyle')}
+                  </div>
+                  <StylePicker small value={run.defaultPlayStyle} onChange={(s) => void updateRunTactics(s, null)} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">
+                    {t('tactics.whenWinning')}
+                  </div>
+                  <StylePicker small value={run.tacticalPlan.whenWinning} onChange={(s) => void updateRunTactics(null, { whenWinning: s })} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">
+                    {t('tactics.whenDrawing')}
+                  </div>
+                  <StylePicker small value={run.tacticalPlan.whenDrawing} onChange={(s) => void updateRunTactics(null, { whenDrawing: s })} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">
+                    {t('tactics.whenLosing')}
+                  </div>
+                  <StylePicker small value={run.tacticalPlan.whenLosing} onChange={(s) => void updateRunTactics(null, { whenLosing: s })} />
+                </div>
+              </div>
+            ) : (
+              <div className="mt-1.5 text-xs space-y-0.5">
+                <p>
+                  {t('tactics.defaultStyle')}: <b>{t(`playStyle.${run.defaultPlayStyle}`)}</b>
+                </p>
+                <p>
+                  {t('tactics.whenWinning')}: <b>{t(`playStyle.${run.tacticalPlan.whenWinning}`)}</b> ·{' '}
+                  {t('tactics.whenDrawing')}: <b>{t(`playStyle.${run.tacticalPlan.whenDrawing}`)}</b> ·{' '}
+                  {t('tactics.whenLosing')}: <b>{t(`playStyle.${run.tacticalPlan.whenLosing}`)}</b>
+                </p>
+              </div>
+            )}
           </div>
           <button className="btn-press w-full text-lg" onClick={findMatch}>
             ⚽ {t('review.findMatch')}

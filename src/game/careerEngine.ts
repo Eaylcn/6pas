@@ -73,29 +73,50 @@ function allById(id: string): AnyPlayer | null {
 
 export interface Reinforcement {
   incoming: AnyPlayer;
-  /** Kadrodan çıkacak (o mevkinin en zayıfı) oyuncu id'si */
+  /** Kadrodan çıkacak oyuncu id'si */
   outgoingId: string;
+  /** Çıkan oyuncu ilk 11'de miydi (takviye sahaya girdi mi) */
+  outgoingWasStarter: boolean;
 }
 
-/**
- * Seçilen mevki için takviye: o mevkideki en zayıf oyuncudan belirgin biçimde
- * daha iyi bir oyuncu getirir. Hedef OVR galibiyet sayısıyla yükselir (rampa).
- */
-export function pickReinforcement(
-  rng: Rng,
-  currentPlayerIds: string[],
-  position: Position,
-  wins: number,
-): Reinforcement | null {
-  const owned = new Set(currentPlayerIds);
-  const atPos = currentPlayerIds
+function weakestAmong(ids: string[], position: Position): AnyPlayer | null {
+  const atPos = ids
     .map((id) => allById(id))
     .filter((p): p is AnyPlayer => p !== null && p.position === position);
   if (atPos.length === 0) return null;
+  return atPos.reduce((a, b) => (b.ovr < a.ovr ? b : a));
+}
 
-  const weakest = atPos.reduce((a, b) => (b.ovr < a.ovr ? b : a));
-  // Hedef band: mevcut en zayıfın üstünde, galibiyetle yükselen bir taban
-  const floor = Math.max(weakest.ovr + 2, 66 + wins * 2);
+/** Bir mevkinin değişecek oyuncusu — ÖNCE ilk 11, yoksa yedek (görünür güçlenme) */
+export function reinforcementOutgoing(
+  starterIds: string[],
+  benchIds: string[],
+  position: Position,
+): { player: AnyPlayer; isStarter: boolean } | null {
+  const starter = weakestAmong(starterIds, position);
+  if (starter) return { player: starter, isStarter: true };
+  const benched = weakestAmong(benchIds, position);
+  if (benched) return { player: benched, isStarter: false };
+  return null;
+}
+
+/**
+ * Seçilen mevki için takviye: ilk 11'deki (yoksa yedekteki) en zayıf oyuncudan
+ * belirgin biçimde daha iyi biri gelir. Hedef OVR galibiyetle yükselir (rampa).
+ */
+export function pickReinforcement(
+  rng: Rng,
+  starterIds: string[],
+  benchIds: string[],
+  position: Position,
+  wins: number,
+): Reinforcement | null {
+  const outgoing = reinforcementOutgoing(starterIds, benchIds, position);
+  if (!outgoing) return null;
+  const owned = new Set([...starterIds, ...benchIds]);
+
+  // Hedef band: çıkan oyuncunun üstünde, galibiyetle yükselen bir taban
+  const floor = Math.max(outgoing.player.ovr + 2, 66 + wins * 2);
   const ceiling = floor + 6;
 
   const candidates = playersByPosition(position)
@@ -106,12 +127,12 @@ export function pickReinforcement(
   if (candidates.length > 0) {
     incoming = rng.pick(candidates.slice(0, Math.min(candidates.length, 10)));
   } else {
-    // Band boşsa: sahip olunmayan, en zayıftan güçlü ilk oyuncu
+    // Band boşsa: sahip olunmayan, çıkandan güçlü en yakın oyuncu
     const fallback = playersByPosition(position)
-      .filter((p) => !owned.has(p.id) && p.ovr > weakest.ovr)
+      .filter((p) => !owned.has(p.id) && p.ovr > outgoing.player.ovr)
       .sort((a, b) => a.ovr - b.ovr);
     incoming = fallback[0] ?? null;
   }
   if (!incoming) return null;
-  return { incoming, outgoingId: weakest.id };
+  return { incoming, outgoingId: outgoing.player.id, outgoingWasStarter: outgoing.isStarter };
 }

@@ -746,18 +746,17 @@ export function MatchSimulationScreen() {
   // hemen bir sonraki pozisyona sıçramaz (seri penaltıda vuruş anı görünür kalsın).
   const upcomingLine = lines[cursor];
   const cueLine = last?.isResult ? last : upcomingLine && !upcomingLine.cue.isResult ? upcomingLine : last;
-  const score = last?.score ?? [session.sim.home.goals, session.sim.away.goals];
+  // ÖNEMLİ: motor olayları anlatımın önünde üretir (sim.goals ileri koşar). Skorbord
+  // ve aktif taktik, YALNIZCA açığa çıkmış satırların skorunu göstermeli — yoksa maç
+  // başında gol daha anlatılmadan skor 1-0 "buglanır". Başlangıçta skor 0-0'dır.
+  const score: [number, number] = last?.score ?? [0, 0];
   const minute = phase === 'PENS' ? 70 : Math.max(clock, last?.minute ?? PHASE_START[phase]);
   const revealed = revealedEvents(session, cursor);
   const goals = revealed.filter((e) => e.result === 'goal');
 
-  // Aktif taktikler (skor durumuna göre)
-  const homeActive = t(
-    `playStyle.${getActiveTactic(session.sim.home.info.tacticalPlan, session.sim.home.goals, session.sim.away.goals)}`,
-  );
-  const awayActive = t(
-    `playStyle.${getActiveTactic(session.sim.away.info.tacticalPlan, session.sim.away.goals, session.sim.home.goals)}`,
-  );
+  // Aktif taktikler (açığa çıkmış skora göre — spoiler yok)
+  const homeActive = t(`playStyle.${getActiveTactic(session.sim.home.info.tacticalPlan, score[0], score[1])}`);
+  const awayActive = t(`playStyle.${getActiveTactic(session.sim.away.info.tacticalPlan, score[1], score[0])}`);
 
   return (
     <div className="max-w-5xl mx-auto relative lg:grid lg:grid-cols-[185px_minmax(0,1fr)_185px] lg:gap-4 lg:items-start">

@@ -5,8 +5,7 @@ import type { FieldPosition, Position } from '../types';
 import { isGoalkeeper } from '../types';
 import { t } from '../i18n';
 import { SectionHeadline } from '../components/NewspaperShell';
-import { getPlayer } from '../data';
-import { pickReinforcement } from '../game/careerEngine';
+import { pickReinforcement, reinforcementOutgoing } from '../game/careerEngine';
 import { createRng, randomSeed } from '../utils/random';
 import { useGameStore } from '../store/useGameStore';
 
@@ -17,37 +16,21 @@ export function ReinforcementScreen() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
-  // Her mevkinin şu anki en zayıf oyuncusu — takviye vitrininde referans
-  const weakestByPos = useMemo(() => {
-    const map: Partial<Record<Position, { name: string; ovr: number }>> = {};
+  // Her mevkide değişecek oyuncu (önce ilk 11) + gelecek takviyenin gücü
+  const infoByPos = useMemo(() => {
+    const map: Partial<Record<Position, { name: string; ovr: number; starter: boolean; incoming: number | null }>> = {};
     if (!run) return map;
-    const ids = [...run.squad, ...run.bench].filter((s) => s.playerId).map((s) => s.playerId!);
+    const starterIds = run.squad.filter((s) => s.playerId).map((s) => s.playerId!);
+    const benchIds = run.bench.filter((b) => b.playerId).map((b) => b.playerId!);
     for (const pos of POSITIONS) {
-      const atPos = ids
-        .map((id) => {
-          try {
-            return getPlayer(id);
-          } catch {
-            return null;
-          }
-        })
-        .filter((p): p is NonNullable<typeof p> => p !== null && p.position === pos);
-      if (atPos.length > 0) {
-        const weak = atPos.reduce((a, b) => (b.ovr < a.ovr ? b : a));
-        map[pos] = { name: weak.name, ovr: weak.ovr };
-      }
+      const out = reinforcementOutgoing(starterIds, benchIds, pos);
+      if (!out) continue;
+      const rng = createRng(randomSeed() + pos.charCodeAt(0));
+      const r = pickReinforcement(rng, starterIds, benchIds, pos, run.wins);
+      map[pos] = { name: out.player.name, ovr: out.player.ovr, starter: out.isStarter, incoming: r ? r.incoming.ovr : null };
     }
     return map;
   }, [run]);
-
-  // Bir mevkiye gelecek takviyenin tahmini gücü (önizleme)
-  const previewFor = (pos: Position): number | null => {
-    if (!run) return null;
-    const ids = [...run.squad, ...run.bench].filter((s) => s.playerId).map((s) => s.playerId!);
-    const rng = createRng(randomSeed() + pos.charCodeAt(0));
-    const r = pickReinforcement(rng, ids, pos, run.wins);
-    return r ? r.incoming.ovr : null;
-  };
 
   if (!run) return null;
 
@@ -79,28 +62,30 @@ export function ReinforcementScreen() {
           </p>
           <div className="space-y-2">
             {POSITIONS.map((pos) => {
-              const weak = weakestByPos[pos];
-              const preview = previewFor(pos);
-              const gain = weak && preview ? preview - weak.ovr : null;
+              const info = infoByPos[pos];
+              const gain = info && info.incoming ? info.incoming - info.ovr : null;
               return (
                 <button
                   key={pos}
-                  disabled={busy || !weak || preview === null}
+                  disabled={busy || !info || info.incoming === null}
                   className="news-card-clickable w-full p-4 text-left flex items-center gap-3 disabled:opacity-50"
                   onClick={() => pick(pos as FieldPosition | 'GK')}
                 >
                   <div className="font-headline font-bold text-lg w-14 shrink-0">{t(`position.${pos}`)}</div>
                   <div className="flex-1 min-w-0">
-                    {weak ? (
+                    {info ? (
                       <p className="text-xs text-ink-soft">
-                        Ayrılacak: <b>{weak.name}</b> ({weak.ovr})
+                        Ayrılacak: <b>{info.name}</b> ({info.ovr}){' '}
+                        <span className="text-[10px] font-score uppercase tracking-wide text-ink-faint">
+                          {info.starter ? '· ilk 11' : '· kulübe'}
+                        </span>
                       </p>
                     ) : (
                       <p className="text-xs text-ink-faint italic">Bu mevkide oyuncu yok</p>
                     )}
-                    {preview !== null && (
+                    {info?.incoming != null && (
                       <p className="text-xs text-grass-deep font-semibold">
-                        Gelecek takviye ≈ {preview} OVR {gain && gain > 0 ? `(+${gain})` : ''}
+                        Gelecek takviye ≈ {info.incoming} OVR {gain && gain > 0 ? `(+${gain})` : ''}
                       </p>
                     )}
                   </div>
