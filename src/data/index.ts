@@ -2,6 +2,7 @@ import type { AnyPlayer, Position } from '../types';
 import { fieldPlayers as fakeFieldPlayers } from './players';
 import { goalkeepers as fakeGoalkeepers } from './goalkeepers';
 import { realFieldPlayers, realGoalkeepers } from './realPlayers';
+import { legendFieldPlayers, legendGoalkeepers } from './legends';
 import { clubs as clubList } from './clubs';
 import { leagues as leagueList } from './leagues';
 
@@ -12,23 +13,37 @@ export { formations, getFormation } from './formations';
 export { teamNamePool } from './teams';
 export { allPerks, getPerk, perksForPosition } from './perks';
 
-// Aktif havuz: 2025-26 gerçek kadroları (tek evren).
+// Aktif havuz: 2025-26 gerçek kadroları + efsane ikonlar (tek evren).
 // Fake havuz yalnızca eski kayıtların çözülmesi için arama haritasında tutulur.
-export const fieldPlayers = realFieldPlayers;
-export const goalkeepers = realGoalkeepers;
+export const fieldPlayers = [...realFieldPlayers, ...legendFieldPlayers];
+export const goalkeepers = [...realGoalkeepers, ...legendGoalkeepers];
 
 export const allPlayers: AnyPlayer[] = [...fieldPlayers, ...goalkeepers];
 
 // Denge kuralı: bir oyuncuda en fazla 2 perk (imza listeleri de bu tavana iner);
 // perk sayısı güce/nadirliğe göre dağıtılır, alt kademede perksiz oyuncular vardır.
-for (const p of [...fakeFieldPlayers, ...fakeGoalkeepers, ...realFieldPlayers, ...realGoalkeepers]) {
+for (const p of [
+  ...fakeFieldPlayers,
+  ...fakeGoalkeepers,
+  ...realFieldPlayers,
+  ...realGoalkeepers,
+  ...legendFieldPlayers,
+  ...legendGoalkeepers,
+]) {
   if (p.perks.length > 2) p.perks = p.perks.slice(0, 2);
 }
 
-// Arama haritası HER İKİ havuzu da içerir: mod değişse bile eski kayıtlı
-// run'lardaki oyuncu id'leri çözülebilir kalır.
+// Arama haritası TÜM havuzları içerir: eski kayıtlı run'lardaki oyuncu
+// id'leri her zaman çözülebilir kalır.
 const playerMap = new Map<string, AnyPlayer>(
-  [...fakeFieldPlayers, ...fakeGoalkeepers, ...realFieldPlayers, ...realGoalkeepers].map((p) => [p.id, p]),
+  [
+    ...fakeFieldPlayers,
+    ...fakeGoalkeepers,
+    ...realFieldPlayers,
+    ...realGoalkeepers,
+    ...legendFieldPlayers,
+    ...legendGoalkeepers,
+  ].map((p) => [p.id, p]),
 );
 
 export function getPlayer(id: string): AnyPlayer {

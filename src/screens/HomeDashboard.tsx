@@ -5,7 +5,6 @@ import { useUserStore } from '../store/useUserStore';
 import { useGameStore } from '../store/useGameStore';
 import { getClippings, getRunHistory, type MatchClipping, type RunRecord } from '../services/historyService';
 import { tournamentRoundLabel } from '../game/tournamentEngine';
-import { resetAllData } from '../services/storage';
 import { isOnline } from '../services/supabaseClient';
 
 export function HomeDashboard() {
@@ -16,7 +15,6 @@ export function HomeDashboard() {
   const startNewTeamFlow = useGameStore((s) => s.startNewTeamFlow);
   const [clippings, setClippings] = useState<MatchClipping[]>([]);
   const [runHistory, setRunHistory] = useState<RunRecord[]>([]);
-  const [resetArmed, setResetArmed] = useState(false);
 
   useEffect(() => {
     void getClippings().then(setClippings);
@@ -73,39 +71,17 @@ export function HomeDashboard() {
 
       <div className="flex items-center justify-between mt-3 text-[11px] font-score uppercase tracking-wider text-ink-soft flex-wrap gap-2">
         <span className="flex items-center gap-3">
-          ⭐ 2025-26 gerçek kadroları
+          ⭐ 2025-26 gerçek kadroları + efsane ikonlar
           {isOnline && <span className="text-grass-deep">🌐 Canlı tablo</span>}
-          {isOnline && (
-            <button
-              className="underline hover:text-vermil"
-              onClick={() => {
-                void logout().then(() => goto('login'));
-              }}
-            >
-              Çıkış Yap
-            </button>
-          )}
         </span>
-        {/* window.confirm iframe'de engellenebildiği için iki aşamalı inline onay */}
-        {resetArmed ? (
-          <span className="flex items-center gap-2">
-            <span className="text-vermil font-bold">Tüm veri silinsin mi?</span>
-            <button
-              className="underline text-vermil font-bold"
-              onClick={() => {
-                resetAllData();
-                window.location.reload();
-              }}
-            >
-              EVET, SIFIRLA
-            </button>
-            <button className="underline" onClick={() => setResetArmed(false)}>
-              Vazgeç
-            </button>
-          </span>
-        ) : (
-          <button className="underline text-ink-faint hover:text-vermil" onClick={() => setResetArmed(true)}>
-            🗑 Sıfırla (debug)
+        {isOnline && (
+          <button
+            className="underline hover:text-vermil"
+            onClick={() => {
+              void logout().then(() => goto('login'));
+            }}
+          >
+            Çıkış Yap
           </button>
         )}
       </div>

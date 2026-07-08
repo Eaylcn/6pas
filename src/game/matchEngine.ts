@@ -27,7 +27,7 @@ import { getNeutralWeather } from './weatherEngine';
 import { MAX_SUBSTITUTIONS } from './halftimeEngine';
 
 // ---- Denge sabitleri (1000 maçlık simülasyonla kalibre edildi) ----
-const GK_EDGE = 3; // kalecinin doğal avantajı
+const GK_EDGE = 2; // kalecinin doğal avantajı (havuz güçlenince skoru canlı tutmak için 3→2)
 const CLEAR_CHANCE_MARGIN = 6; // net pozisyon eşiği
 const GOAL_MARGIN = 2; // şutun kaleciyi geçme eşiği
 const PERK_TRIGGER_CHANCE = 0.35;

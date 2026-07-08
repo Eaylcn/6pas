@@ -354,8 +354,36 @@ export function AssistantAdviceCard({ context }: { context: 'HT' | 'LIVE' }) {
   );
 }
 
-// ---- Kenara Talimat paneli ----
-function SidelinePanel({ onClose }: { onClose: () => void }) {
+// ---- Kenara Talimat paneli (v2: sekmeli teknik alan) ----
+function PlayerRow({
+  player,
+  selected,
+  onClick,
+  note,
+}: {
+  player: { id: string; name: string; position: string; ovr: number };
+  selected?: boolean;
+  onClick: () => void;
+  note?: string;
+}) {
+  return (
+    <button
+      className={`w-full flex items-center gap-1.5 px-2 py-1.5 border text-xs text-left transition-colors ${
+        selected ? 'border-vermil border-2 bg-vermil/10 font-bold' : 'border-ink/25 hover:border-ink bg-paper-soft/40'
+      }`}
+      onClick={onClick}
+    >
+      <span className="text-[8px] font-score uppercase tracking-wider text-paper bg-ink/70 px-1 py-0.5 shrink-0">
+        {t(`position.${player.position}`)}
+      </span>
+      <span className="truncate flex-1">{player.name}</span>
+      {note && <span className="text-[9px] font-score text-ink-faint shrink-0">{note}</span>}
+      <span className="font-score font-bold text-[11px] bg-paper-deep border border-ink/25 px-1 shrink-0">{player.ovr}</span>
+    </button>
+  );
+}
+
+function SidelinePanel({ onClose, minute }: { onClose: () => void; minute: number }) {
   const {
     session,
     makeSubstitution,
@@ -364,13 +392,15 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
     dismissForcedSub,
     sidelinePositionChange,
   } = useGameStore();
+  const [tab, setTab] = useState<'sub' | 'pos' | 'tactic'>('sub');
   const [outId, setOutId] = useState<string | null>(null);
   const [style, setStyle] = useState<PlayStyle | null>(null);
   const [posPlayerId, setPosPlayerId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   if (!session) return null;
 
   const home = session.sim.home;
+  const away = session.sim.away;
   const subsLeft = MAX_SUBSTITUTIONS - home.subsUsed;
   const tacticLeft = MAX_INMATCH_TACTIC_CHANGES - session.inMatchTacticChanges;
   const fieldPlayers = home.info.players; // kaleci dahil — GK↔GK değişikliği serbest
@@ -381,6 +411,18 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
   const outfield = fieldPlayers.filter((p): p is FieldPlayer => !isGoalkeeper(p));
   const posPlayer = posPlayerId ? outfield.find((p) => p.id === posPlayerId) : null;
 
+  const say = (text: string | null, okText?: string) => {
+    if (text) setMessage({ text, ok: false });
+    else if (okText) setMessage({ text: okText, ok: true });
+    else setMessage(null);
+  };
+
+  const tabs = [
+    { id: 'sub' as const, label: `🔁 Değişiklik`, badge: subsLeft },
+    { id: 'pos' as const, label: `🧭 Mevki`, badge: null },
+    { id: 'tactic' as const, label: `📋 Taktik`, badge: tacticLeft },
+  ];
+
   return (
     <div
       className="fixed inset-0 z-50 bg-ink/60 overflow-y-auto"
@@ -389,171 +431,196 @@ function SidelinePanel({ onClose }: { onClose: () => void }) {
       }}
     >
       <div className="min-h-full flex items-start sm:items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-        <div className="news-card max-w-lg w-full p-5 my-6">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="headline text-lg">{t('match.sideline')}</h3>
-          <button className="btn-outline text-xs px-2 py-1" onClick={onClose}>
-            {t('match.close')}
-          </button>
-        </div>
-        <p className="text-xs italic text-ink-faint mb-3">{t('match.sidelineNote')}</p>
-        {message && <p className="text-xs font-semibold text-vermil mb-2">{message}</p>}
-
-        {/* Zorunlu değişiklik: sakat çıkan oyuncunun yerine isim sokulmalı */}
-        {forcedPos && (
-          <div className="border-2 border-vermil bg-vermil/10 p-3 mb-4">
-            <div className="tag-label text-vermil border-vermil mb-1">⚕ Zorunlu Değişiklik</div>
-            <p className="text-xs mb-2">
-              Sakatlık sonrası <b>{t(`position.${forcedPos}`)}</b> bölgesi eksik kaldı. Kulübeden bir isim sok
-              (farklı mevkiden oyuncu da girebilir) ya da eksik devam et.
-            </p>
-            {subsLeft > 0 && benchField.length > 0 ? (
-              <div className="grid grid-cols-2 gap-1.5 mb-2">
-                {benchField.map((p) => (
-                  <button
-                    key={p.id}
-                    className={`text-left px-2 py-1 border text-xs hover:bg-grass-deep hover:text-paper ${
-                      p.position === forcedPos ? 'border-grass-deep font-semibold' : 'border-ink/30'
-                    }`}
-                    onClick={() => {
-                      const err = makeInjuryReplacement(p.id);
-                      setMessage(err);
-                    }}
-                  >
-                    <span className="text-[9px] font-score uppercase opacity-70 mr-1">{t(`position.${p.position}`)}</span>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[11px] italic text-ink-faint mb-2">Değişiklik imkânı yok — eksik devam edilecek.</p>
-            )}
-            <button className="btn-outline text-[11px] px-2 py-1" onClick={() => dismissForcedSub()}>
-              Eksik devam et
-            </button>
-          </div>
-        )}
-
-        <AssistantAdviceCard context="LIVE" />
-
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="tag-label">{t('halftime.substitutions')}</span>
-            <span className="text-[10px] font-score uppercase tracking-wider text-ink-soft">
-              {t('halftime.subsLeft', { count: subsLeft })}
-            </span>
-          </div>
-          {subsLeft > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                {fieldPlayers.map((p) => (
-                  <button
-                    key={p.id}
-                    className={`w-full text-left px-2 py-1 border text-xs ${
-                      outId === p.id ? 'border-vermil bg-paper font-bold' : 'border-ink/30 hover:border-ink'
-                    }`}
-                    onClick={() => setOutId(p.id === outId ? null : p.id)}
-                  >
-                    <span className="text-[9px] font-score uppercase text-ink-faint mr-1">{t(`position.${p.position}`)}</span>
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-1">
-                {outPlayer ? (
-                  eligible.length > 0 ? (
-                    eligible.map((p) => (
-                      <button
-                        key={p.id}
-                        className="w-full text-left px-2 py-1 border border-grass-deep text-xs hover:bg-grass-deep hover:text-paper"
-                        onClick={() => {
-                          const err = makeSubstitution(outPlayer.id, p.id);
-                          setMessage(err);
-                          if (!err) setOutId(null);
-                        }}
-                      >
-                        {p.name}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-[11px] italic text-ink-faint">Bu pozisyonda uygun yedek yok.</p>
-                  )
-                ) : (
-                  <p className="text-[11px] italic text-ink-faint">{t('halftime.subOut')}</p>
-                )}
+        <div className="news-card max-w-lg w-full my-6 overflow-hidden">
+          {/* Başlık: bağlam hep gözde — dakika ve skor */}
+          <div className="bg-ink text-paper px-4 py-2.5 flex items-center justify-between gap-2">
+            <div>
+              <div className="font-headline font-bold text-base leading-tight">📣 {t('match.sideline')}</div>
+              <div className="text-[10px] font-score uppercase tracking-widest opacity-80">
+                {minute}' · {home.info.teamName} {home.goals} - {away.goals} {away.info.teamName}
               </div>
             </div>
-          ) : (
-            <p className="text-[11px] italic text-ink-faint">Değişiklik hakkı kalmadı.</p>
-          )}
-        </div>
+            <button className="text-paper/80 hover:text-paper text-xl leading-none px-1" onClick={onClose} title={t('match.close')}>
+              ✕
+            </button>
+          </div>
 
-        {/* Mevki kaydırma: kırmızı sonrası "ortasahacıyı savunmaya çek" müdahalesi */}
-        <div className="mb-4">
-          <span className="tag-label">Mevki Kaydır</span>
-          <p className="text-[11px] italic text-ink-faint mt-0.5 mb-1.5">
-            Sahadaki bir oyuncuyu başka bölgeye çek (ör. eksik kalınca orta sahadan savunmaya).
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              {outfield.map((p) => (
+          <div className="p-4">
+            {message && (
+              <p className={`text-xs font-semibold mb-2 ${message.ok ? 'text-grass-deep' : 'text-vermil'}`}>
+                {message.ok ? '✔ ' : '‼ '}
+                {message.text}
+              </p>
+            )}
+
+            {/* Zorunlu değişiklik: her sekmenin üstünde sabit */}
+            {forcedPos && (
+              <div className="border-2 border-vermil bg-vermil/10 p-3 mb-3">
+                <div className="tag-label text-vermil border-vermil mb-1">⚕ Zorunlu Değişiklik</div>
+                <p className="text-xs mb-2">
+                  Sakatlık sonrası <b>{t(`position.${forcedPos}`)}</b> bölgesi eksik. Kulübeden bir isim sok
+                  (farklı mevkiden de olur) ya da eksik devam et.
+                </p>
+                {subsLeft > 0 && benchField.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-1.5 mb-2">
+                    {benchField.map((p) => (
+                      <PlayerRow
+                        key={p.id}
+                        player={p}
+                        note={p.position === forcedPos ? 'aynı mevki' : undefined}
+                        onClick={() => say(makeInjuryReplacement(p.id), `${p.name} oyuna girdi.`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] italic text-ink-faint mb-2">Değişiklik imkânı yok — eksik devam edilecek.</p>
+                )}
+                <button className="btn-outline text-[11px] px-2 py-1" onClick={() => dismissForcedSub()}>
+                  Eksik devam et
+                </button>
+              </div>
+            )}
+
+            <AssistantAdviceCard context="LIVE" />
+
+            {/* Sekmeler */}
+            <div className="flex border border-ink/40 mb-3">
+              {tabs.map((tb) => (
                 <button
-                  key={p.id}
-                  className={`w-full text-left px-2 py-1 border text-xs ${
-                    posPlayerId === p.id ? 'border-vermil bg-paper font-bold' : 'border-ink/30 hover:border-ink'
+                  key={tb.id}
+                  className={`flex-1 text-[11px] font-score uppercase tracking-wider py-1.5 flex items-center justify-center gap-1 ${
+                    tab === tb.id ? 'bg-ink text-paper font-bold' : 'hover:bg-paper-deep'
                   }`}
-                  onClick={() => setPosPlayerId(p.id === posPlayerId ? null : p.id)}
+                  onClick={() => {
+                    setTab(tb.id);
+                    setMessage(null);
+                  }}
                 >
-                  <span className="text-[9px] font-score uppercase text-ink-faint mr-1">{t(`position.${p.position}`)}</span>
-                  {p.name}
+                  {tb.label}
+                  {tb.badge !== null && (
+                    <span
+                      className={`text-[9px] font-bold px-1 rounded-sm ${
+                        tab === tb.id ? 'bg-paper text-ink' : 'bg-ink/15'
+                      }`}
+                    >
+                      {tb.badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
-            <div className="space-y-1">
-              {posPlayer ? (
-                (['DEF', 'MID', 'ATK'] as const).map((pos) => (
-                  <button
-                    key={pos}
-                    disabled={posPlayer.position === pos}
-                    className="w-full text-left px-2 py-1 border border-grass-deep text-xs hover:bg-grass-deep hover:text-paper disabled:opacity-40 disabled:cursor-not-allowed"
-                    onClick={() => {
-                      const err = sidelinePositionChange(posPlayer.id, pos);
-                      setMessage(err ?? `${posPlayer.name} artık ${t(`position.${pos}`)} bölgesinde oynayacak.`);
-                      if (!err) setPosPlayerId(null);
-                    }}
-                  >
-                    → {t(`position.${pos}`)}
-                    {posPlayer.position === pos ? ' (şu anki)' : ''}
-                  </button>
-                ))
-              ) : (
-                <p className="text-[11px] italic text-ink-faint">Önce oyuncu seç.</p>
-              )}
-            </div>
-          </div>
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="tag-label">{t('common.playStyle')}</span>
-            <span className="text-[10px] font-score uppercase tracking-wider text-ink-soft">
-              {t('match.tacticLimitLeft', { count: tacticLeft })}
-            </span>
+            {/* 🔁 DEĞİŞİKLİK */}
+            {tab === 'sub' &&
+              (subsLeft > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">Sahadan çıkacak</div>
+                    <div className="space-y-1">
+                      {fieldPlayers.map((p) => (
+                        <PlayerRow key={p.id} player={p} selected={outId === p.id} onClick={() => setOutId(p.id === outId ? null : p.id)} />
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-score uppercase tracking-widest text-ink-soft mb-1">
+                      {outPlayer ? `${outPlayer.name.split(' ').slice(-1)[0]} yerine` : 'Kulübeden girecek'}
+                    </div>
+                    <div className="space-y-1">
+                      {outPlayer ? (
+                        eligible.length > 0 ? (
+                          eligible.map((p) => (
+                            <PlayerRow
+                              key={p.id}
+                              player={p}
+                              onClick={() => {
+                                const err = makeSubstitution(outPlayer.id, p.id);
+                                say(err, `${p.name} oyunda, ${outPlayer.name} kulübede.`);
+                                if (!err) setOutId(null);
+                              }}
+                            />
+                          ))
+                        ) : (
+                          <p className="text-[11px] italic text-ink-faint">Bu pozisyonda uygun yedek yok.</p>
+                        )
+                      ) : (
+                        <p className="text-[11px] italic text-ink-faint">{t('halftime.subOut')}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] italic text-ink-faint">Değişiklik hakkı kalmadı.</p>
+              ))}
+
+            {/* 🧭 MEVKİ */}
+            {tab === 'pos' && (
+              <div>
+                <p className="text-[11px] italic text-ink-faint mb-1.5">
+                  Sahadaki bir oyuncuyu başka bölgeye çek (ör. eksik kalınca orta sahadan savunmaya). Hak tüketmez.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    {outfield.map((p) => (
+                      <PlayerRow
+                        key={p.id}
+                        player={p}
+                        selected={posPlayerId === p.id}
+                        onClick={() => setPosPlayerId(p.id === posPlayerId ? null : p.id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="space-y-1">
+                    {posPlayer ? (
+                      (['DEF', 'MID', 'ATK'] as const).map((pos) => (
+                        <button
+                          key={pos}
+                          disabled={posPlayer.position === pos}
+                          className="w-full text-left px-2 py-1.5 border border-grass-deep text-xs hover:bg-grass-deep hover:text-paper disabled:opacity-40 disabled:cursor-not-allowed"
+                          onClick={() => {
+                            const err = sidelinePositionChange(posPlayer.id, pos);
+                            say(err, `${posPlayer.name} artık ${t(`position.${pos}`)} bölgesinde.`);
+                            if (!err) setPosPlayerId(null);
+                          }}
+                        >
+                          → {t(`position.${pos}`)}
+                          {posPlayer.position === pos ? ' (şu anki)' : ''}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-[11px] italic text-ink-faint">Önce oyuncu seç.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 📋 TAKTİK */}
+            {tab === 'tactic' && (
+              <div>
+                <p className="text-[11px] italic text-ink-faint mb-1.5">
+                  Oyun tarzını değiştir — kalan maç içi hakkın: <b>{tacticLeft}</b>.
+                </p>
+                <StylePicker small value={style ?? session.sim.home.info.defaultPlayStyle} onChange={setStyle} />
+                <button
+                  className="btn-press w-full mt-2 text-sm"
+                  disabled={!style || tacticLeft <= 0}
+                  onClick={() => {
+                    if (!style) return;
+                    const err = sidelineTacticChange(style, null);
+                    say(err, 'Yeni talimat sahaya iletildi.');
+                    if (!err) setStyle(null);
+                  }}
+                >
+                  {t('match.applyStyle')}
+                </button>
+              </div>
+            )}
+
+            <button className="btn-press w-full mt-4" onClick={onClose}>
+              ▶ Oyuna Dön
+            </button>
           </div>
-          <StylePicker small value={style ?? session.sim.home.info.defaultPlayStyle} onChange={setStyle} />
-          <button
-            className="btn-press w-full mt-2 text-sm"
-            disabled={!style || tacticLeft <= 0}
-            onClick={() => {
-              if (!style) return;
-              const err = sidelineTacticChange(style, null);
-              setMessage(err);
-              if (!err) setStyle(null);
-            }}
-          >
-            {t('match.applyStyle')}
-          </button>
-        </div>
         </div>
       </div>
     </div>
@@ -904,6 +971,7 @@ export function MatchSimulationScreen() {
 
       {sidelineOpen && (
         <SidelinePanel
+          minute={minute}
           onClose={() => {
             setSidelineOpen(false);
             setPaused(false);

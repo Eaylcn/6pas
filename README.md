@@ -56,14 +56,14 @@ npm run balance    # 1000 maçlık denge simülasyonu raporu
 - Ana sayfada son maç **kupür arşivi**
 
 ### Evren, Tablolar & Tema
-- ⭐ **Tek evren**: 20 kulüp, **2025-26 gerçek kadroları** (~210 oyuncu, güncel OVR'lar, yıldızlara imza perkleri) her zaman açık — fake havuz yalnızca eski kayıtların çözülmesi için arşivde
+- ⭐ **Tek evren**: 28 kulüp, **2025-26 gerçek kadroları** (~330 oyuncu, güncel OVR'lar, yıldızlara imza perkleri) + **32 efsane ikon** (Maradona, Zidane, Ronaldinho, R9, Maldini, Buffon, Alex, Hagi, Sergen…) her zaman açık — ikonlar en nadir draft kademesi (%2), efsane kulüplerine bağlı oldukları için bugünkü kadrolarla kulüp kimyası kurar; fake havuz yalnızca eski kayıtların çözülmesi için arşivde
 - 🥇 **İki ayrı puan tablosu**: Klasik (puan + en iyi seri) ve Turnuva (puan + en iyi aşama) — sekmeli ekran
 - 📒 **Geçmişim — Takım Defteri**: biten her run kaydedilir; hangi takımla, hangi kaptanla, nereye kadar gidildiği ana sayfada listelenir
 - ☾ **Gece Baskısı** koyu tema (masthead'den geçiş)
 - 🗑 Ana sayfada **debug sıfırlama** (iki aşamalı onay, tüm veriyi siler)
 
 ### Denge (1000 maç, kalibre)
-~2.3 gol/maç · skorlar çoğunlukla 1-0/0-0/2-1/2-0 · 7+ gol <%1 · kurtarış ~2.1/maç, kaçan şut ~2.3/maç (kaçan > kurtarış) · penaltı dönüşümü ~%78 · sarı 0.8/maç · kırmızı ~%5 · sakatlık ~%7 · uzatma ~%33, seri penaltı ~%28
+~1.8 gol/maç · skorlar çoğunlukla 1-0/2-0/2-1 · 7+ gol ≈%0 · kurtarış ~2.4/maç, kaçan şut ~2.5/maç (kaçan > kurtarış) · penaltı dönüşümü ~%80 · sarı 0.8/maç · kırmızı ~%5 · uzatma ~%36, seri penaltı ~%29 (güçlenen havuz için GK_EDGE 3→2 ile yeniden kalibre)
 
 ## Mimari
 
